@@ -8,7 +8,7 @@ The user-facing goal: when a Qualtrics call fails because a token is under-scope
 
 ### 1. Startup preflight (the SDK)
 
-On client construction, the SDK calls `GET /API/v3/whoami` once. This endpoint requires no permission (see [`directory.md`](./directory.md#whoami)). The returned `permissions` object is cached on the client and used to:
+On client construction, the SDK calls `GET /API/v3/whoami` once. This endpoint requires no permission (see [`directory.md`](./directory.md#get-whoami)). The returned `permissions` object is cached on the client and used to:
 
 - Enrich subsequent 403 errors (see layer 2).
 - Answer `client.capabilities()` — a typed method that returns an object like `{ surveys: "full", responses: "read-only", workflows: "none", directory: "none" }` derived from the cached permissions.
