@@ -105,8 +105,19 @@ When you are rate-limited, Qualtrics returns **HTTP 429** with a `Retry-After` h
 - The SDK will redact tokens from all log output, including `--verbose` debug logs (REQ-1.15, REQ-2.15, REQ-2.21).
 - `.qsurveyrc` file format is TBD for v0; assume JSON or TOML and assume the SDK will refuse to read it if permissions are world-readable on disk.
 
+## Dev-only tokens for the MCP server
+
+For local development, the repo ships with an MCP server config (see [`mcp-dev-setup.md`](./mcp-dev-setup.md)) that expects a separate `QUALTRICS_DEV_TOKEN` env var. Rationale:
+
+- If the MCP tool misbehaves (a wrong prompt causes an unwanted write), you can revoke just the dev token without disrupting prod work.
+- You can point the dev token at a sandbox brand or sandbox survey while `QUALTRICS_API_TOKEN` points at prod.
+- Token rotation per contractor or per laptop is cleaner.
+
+See `.env.example` in the repo root. The token goes in `.env`, which is gitignored.
+
 ## See also
 
 - [`permissions-and-scopes.md`](./permissions-and-scopes.md) — endpoint-by-endpoint mapping to user permissions and OAuth scopes.
 - [`runtime-scope-checks.md`](./runtime-scope-checks.md) — how the SDK will surface permission gaps to callers at runtime.
 - [`request-for-permissions.md`](./request-for-permissions.md) — email template to send to a brand admin.
+- [`mcp-dev-setup.md`](./mcp-dev-setup.md) — Qualtrics MCP server configuration for local development.

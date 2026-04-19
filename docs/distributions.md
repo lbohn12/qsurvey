@@ -112,8 +112,21 @@ Returns the individual distribution including a `stats` block: sent count, opene
 - **Mailing-list vs. sample.** "Sample" distributions (sending to a subset of a list) require Qualtrics Research Core and are not covered by the v0 SDK.
 - **Send date in the past.** Qualtrics accepts it silently and sends immediately. If you want to send now, set `sendDate` to `new Date().toISOString()` and move on.
 
+## Resume links and the `Q_R_DEL` trap
+
+Personalized resume links use the `Q_R` query parameter: `https://{datacenter}.qualtrics.com/jfe/form/{surveyId}?Q_R={responseId}`. A returning applicant who clicks this link lands on their in-progress response at the point they left off (assuming Save-and-Continue is on).
+
+**Never append `&Q_R_DEL=1` to a resume URL that may reach the applicant after submission.** That parameter tells Qualtrics to delete the referenced response on load and start a new one. For a submitted response, it silently wipes the submission. See [`gotchas.md`](./gotchas.md#q_r_del1-wipes-completed-responses) for the full story and CSSA `LESSONS.md` #15 for the post-mortem.
+
+Per [`spec.md`](../spec.md) REQ-2.39, the `qsurvey` SDK's `buildResumeUrl()` helper refuses to append `Q_R_DEL=1` unless the caller opts in via the explicitly-named `deleteExistingResponse` flag, which is documented inline as destructive.
+
+For duplicate-response concerns across devices, use `BallotBoxStuffingPrevention` (see [`survey-protection.md`](./survey-protection.md)) rather than URL parameters.
+
 ## See also
 
 - [`permissions-and-scopes.md`](./permissions-and-scopes.md#distributions)
 - [`directory.md`](./directory.md) — mailing lists and contacts are directory objects.
 - [`survey-platform.md`](./survey-platform.md) — the survey must be activated before distributions can send.
+- [`survey-protection.md`](./survey-protection.md) — cookie- and flag-based levers for preventing resubmission.
+- [`workflow-emails.md`](./workflow-emails.md) — using `${e://Field/response_id}` in workflow email URLs.
+- [`gotchas.md`](./gotchas.md) — the full catalogue of Qualtrics footguns.

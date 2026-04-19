@@ -115,8 +115,22 @@ Both require **Edit Survey** permission on the survey that owns the response —
 
 Bulk import via `POST /surveys/{id}/import-responses` with a CSV or JSON payload matching the survey structure. Requires Edit Survey + `manage:survey_responses` OAuth scope. Rarely needed for qsurvey's v0 use cases; documented for completeness.
 
+## Completed-response re-entry and Save-and-Continue
+
+When a survey has Save-and-Continue enabled (the default via `SurveyOptions.SaveAndContinue: "true"`) and an applicant clicks `?Q_R=<completed_id>` — i.e., a resume link after submitting — Qualtrics does NOT load the completed response into the flow. It typically starts a brand-new response. Consequences:
+
+- Response exports show the original submitted response (unchanged, good) AND a new in-progress or completed response from the re-entry attempt (noise, possibly problematic).
+- Flow-level branch guards keyed on submission-state embedded data never fire (because the new response has no such data). See [`survey-protection.md`](./survey-protection.md).
+- Email workflows triggered on the new response's embedded-data-set event will fire a duplicate welcome email to the same applicant.
+
+**Remediation:** enable `BallotBoxStuffingPrevention` (see [`survey-protection.md`](./survey-protection.md)) so returning applicants from the same browser are intercepted before a new response is created. For cross-browser / cross-device cases, `SurveyLinkCompletedMessage` is the complementary lever.
+
+For exports specifically: filter on `Finished == True` and inspect `StartDate` and `RecordedDate` to distinguish original submissions from resubmission-attempt artifacts.
+
 ## See also
 
 - [`permissions-and-scopes.md`](./permissions-and-scopes.md#responses-and-exports)
 - [`authentication.md`](./authentication.md#rate-limits) — the polling loop interacts with rate limits.
 - [`workflows.md`](./workflows.md) — a "response recorded" event can push responses to you instead of you polling.
+- [`survey-protection.md`](./survey-protection.md) — preventing resubmission-attempt artifacts in the first place.
+- [`gotchas.md`](./gotchas.md) — known silent failure modes on the response path.

@@ -220,8 +220,25 @@ type Question =
 
 Serialization (REQ-2.8) and deserialization (REQ-2.9) are pure data transforms — no network. Idempotent sync (REQ-2.11, REQ-2.12) is the diffing call that reconciles a schema against a live survey and returns the changes.
 
+## Display logic — read this before wiring up any "If yes, please specify"
+
+**In-page display logic lives in `InPageDisplayLogic`, not `DisplayLogic`.** These are two separate fields on the question object. The editor reads both; the runtime reads only one. Writing to `DisplayLogic` for an in-page rule silently fails at runtime even though the editor shows the rule as correctly configured. See [`display-logic.md`](./display-logic.md) for the full story and [`gotchas.md`](./gotchas.md#inpagedisplaylogic-is-a-separate-field-from-displaylogic).
+
+## Choice scaffolding — match what the UI writes
+
+Questions created via the API are structurally indistinguishable from UI-created ones only when the SDK populates `ChoiceOrder`, `NextChoiceId`, `NextAnswerId`, `DataVisibility`, and `SearchSource` at creation time. Missing these fields doesn't produce an API error but is suspected to contribute to subtle runtime bugs, especially around display-logic choice resolution. See [`choice-fields.md`](./choice-fields.md) for the full field-by-field breakdown and `spec.md` REQ-2.32 / REQ-2.33.
+
+## Verify after every update
+
+Qualtrics' question PUT endpoint occasionally drops fields silently even when supplied (observed with `ForceResponse`; see CSSA `LESSONS.md` #14). Always run `sdk.verify(surveyId, schema)` after any sync to catch drift. See [`idempotent-sync.md`](./idempotent-sync.md) and `spec.md` REQ-2.35.
+
 ## See also
 
 - [`permissions-and-scopes.md`](./permissions-and-scopes.md#survey-platform--surveys-blocks-questions-flow) — which permission each endpoint needs.
 - [`responses-and-exports.md`](./responses-and-exports.md) — reading responses once the survey is live.
 - [`distributions.md`](./distributions.md) — moving beyond the anonymous link.
+- [`display-logic.md`](./display-logic.md) — the `InPageDisplayLogic` vs `DisplayLogic` story.
+- [`choice-fields.md`](./choice-fields.md) — scaffolding fields the UI writes that API clients often miss.
+- [`idempotent-sync.md`](./idempotent-sync.md) — how sync preserves UI-managed content across updates.
+- [`survey-protection.md`](./survey-protection.md) — `BallotBoxStuffingPrevention` and the resubmission-prevention matrix.
+- [`gotchas.md`](./gotchas.md) — the full catalogue of Qualtrics footguns.

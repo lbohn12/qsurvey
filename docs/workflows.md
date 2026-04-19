@@ -140,8 +140,26 @@ Setting `status` to `inactive` stops the workflow firing without deleting it. `a
 
 [`examples/ts/06-list-workflows.ts`](./examples/ts/06-list-workflows.ts) is a one-shot script that lists workflows. It is the example most likely to 403 on a survey-design-only token — intentional, so the forthcoming 403-enrichment behavior in [`runtime-scope-checks.md`](./runtime-scope-checks.md) has a concrete test case.
 
+## Email-task pitfalls (read before wiring up a reminder email)
+
+Qualtrics' Modern Workflow email tasks have three silent-failure modes that have cost real time on CSSA RFA 2. The fixes are documented in detail in [`workflow-emails.md`](./workflow-emails.md); briefly:
+
+1. **Piped question values (`${q://QID.../QuestionTextEntry}`) render empty in workflow email contexts.** To, Subject, Body, URL params — any of them becomes `""` silently. Use `${e://Field/…}` embedded-data fields instead, set via a flow-level `EmbeddedData` node immediately after the capture block.
+2. **The built-in `${e://Field/ResponseID}` also fails** in embedded-data-triggered workflow emails. Set an explicit lowercase `response_id` field in the flow and reference that.
+3. **Legacy Email Triggers (Survey Tools → Actions) are deprecated and fail silently.** Migrate to Modern Workflows on Response → Completed Response. See [`gotchas.md`](./gotchas.md#legacy-email-triggers-actions-fail-silently).
+
+## The 7-day delay cap
+
+Modern Workflow Delay blocks max out at 7 days per block. Patterns that break: "fire on a fixed calendar date regardless of when each applicant started." Workarounds (Scheduled-trigger workflows, chained delays, manual batch sends) are in [`workflow-emails.md#the-7-day-delay-cap`](./workflow-emails.md#the-7-day-delay-cap-and-the-may-24-problem).
+
+## The `Run Immediately` test-run trap
+
+Clicking Run Immediately in the workflow editor does NOT exercise a real response — there's no response context, and Qualtrics prompts for manual values for each embedded-data field. Do not conclude from a test run that your workflow is broken. Validate with a real end-to-end submission. See [`gotchas.md`](./gotchas.md#modern-workflow-run-immediately-has-no-response-context).
+
 ## See also
 
 - [`permissions-and-scopes.md`](./permissions-and-scopes.md#workflows)
 - [`request-for-permissions.md`](./request-for-permissions.md) — the fix for the 403 you are probably reading this doc because of.
 - [`directory.md`](./directory.md) — directory-scoped workflows trigger on contact events.
+- [`workflow-emails.md`](./workflow-emails.md) — reliable patterns for workflow email tasks.
+- [`gotchas.md`](./gotchas.md) — the silent-failure catalogue.

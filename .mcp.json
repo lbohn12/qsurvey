@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "qualtrics": {
+      "command": "npx",
+      "args": ["-y", "qualtrics-mcp-server"],
+      "env": {
+        "QUALTRICS_API_TOKEN": "${QUALTRICS_DEV_TOKEN}",
+        "QUALTRICS_DATA_CENTER": "${QUALTRICS_DATA_CENTER}"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "_comment_1": "Field classification for the UI-parity fixture harness. See tests/fixtures/README.md for the model.",
+  "_comment_2": "Classifications: 'runtime-critical' = mismatch fails CI; 'cosmetic' = informational only; 'cosmetic-probably' = under investigation, warn but don't fail.",
+  "_comment_3": "Source: CSSA RFA 2 LESSONS.md + qsurvey docs/gotchas.md. Update whenever a new gotcha is documented.",
+
+  "QuestionType": "runtime-critical",
+  "Selector": "runtime-critical",
+  "DataExportTag": "runtime-critical",
+  "SubSelector": "runtime-critical",
+  "Choices": "runtime-critical",
+  "ChoiceOrder": "runtime-critical",
+
+  "Validation.Settings.ForceResponse": "runtime-critical",
+  "Validation.Settings.Type": "runtime-critical",
+
+  "InPageDisplayLogic": "runtime-critical",
+  "DisplayLogic": "runtime-critical",
+
+  "Configuration.QuestionDescriptionOption": "cosmetic",
+
+  "NextChoiceId": "cosmetic-probably",
+  "NextAnswerId": "cosmetic-probably",
+  "DataVisibility": "cosmetic-probably",
+  "SearchSource": "cosmetic-probably",
+
+  "QuestionText_Unsafe": "cosmetic",
+  "Language": "runtime-critical-for-FileUpload"
+}

@@ -95,6 +95,13 @@ Generate a working Qualtrics survey from a source PDF in a single command. This 
 - **REQ-1.22** The CLI shall emit all error messages in a structured format that includes a machine-readable error code, a human-readable message, and a suggested remediation step.
 - **REQ-1.23** Where the `--json` flag is provided, the CLI shall emit all output (success and error) as newline-delimited JSON suitable for parsing by an automation agent.
 
+#### Post-creation verification and safe defaults (added April 2026)
+
+- **REQ-1.24** After creating a survey via `from-pdf`, the CLI shall invoke the SDK's `verify` method (REQ-2.35) and print any structural drift before exiting.
+- **REQ-1.25** The CLI shall enable `BallotBoxStuffingPrevention` (REQ-2.36) by default on every survey it creates, unless the user passes `--allow-multiple-submissions`.
+- **REQ-1.26** The CLI shall never emit a resume link or URL template containing `Q_R_DEL=1`. This applies to stdout output, sidecar JSON output, and any sample email body the CLI generates.
+- **REQ-1.27** Where the `--verify` flag is provided against an existing survey ID, the CLI shall skip creation and print only the structural diff produced by REQ-2.35.
+
 ### Acceptance criteria for shipping v0
 
 The v0 is shippable when all of the following are true:
@@ -188,6 +195,46 @@ A typed client library for the Qualtrics API that is sane to use, pleasant to re
 - **REQ-2.25** The SDK shall provide full type definitions for every public method parameter and return value.
 - **REQ-2.26** The SDK shall provide type definitions for every supported question type.
 - **REQ-2.27** Where the Qualtrics API returns a field the SDK does not model, the SDK shall preserve that field on the returned object under a typed `extensions` property, rather than dropping it.
+
+#### Display-logic correctness (added April 2026 after CSSA RFA 2 launch-day debugging)
+
+These REQs exist because today's other Qualtrics client libraries get display logic wrong in a way that passes every lint, every type check, and every visual editor inspection, yet silently fails at runtime for respondents. See [`docs/display-logic.md`](./docs/display-logic.md) and the `CSSA RFA 2/LESSONS.md` entry #13 for the post-mortem.
+
+- **REQ-2.28** The SDK shall write in-page display logic to the question's `InPageDisplayLogic` field, not `DisplayLogic`.
+- **REQ-2.29** When building an `InPageDisplayLogic` payload, the SDK shall include the `QuestionIDFromLocator` and `LeftOperand` placeholder fields that the Qualtrics UI emits, matching the UI-saved structure byte-for-byte.
+- **REQ-2.30** When building an `InPageDisplayLogic` payload, the SDK shall construct the `Description` field using the CSS-classed span structure the Qualtrics UI emits (`<span class="ConjDesc">…</span> <span class="LeftOpDesc">…</span> <span class="OpDesc">…</span>`).
+- **REQ-2.31** When clearing display logic, the SDK shall omit the `DisplayLogic` and `InPageDisplayLogic` keys from the update payload rather than sending them as `null` — Qualtrics' options and question PUT endpoints reject `null` for these fields with a 400.
+
+#### Choice-field scaffolding parity with UI-created questions
+
+- **REQ-2.32** When creating or updating a multiple-choice question, the SDK shall include `ChoiceOrder` derived from the ordered choice keys, even when the caller did not supply it explicitly.
+- **REQ-2.33** When creating or updating a question, the SDK shall populate the default fields the Qualtrics UI writes on question creation (`NextChoiceId`, `NextAnswerId`, `DataVisibility`, `SearchSource`), so that API-created questions are structurally indistinguishable from UI-created ones. See [`docs/choice-fields.md`](./docs/choice-fields.md).
+
+#### Idempotent sync — preserve UI-managed nodes
+
+- **REQ-2.34** When idempotently syncing a survey, the SDK shall preserve any flow nodes, embedded-data setters, and survey-option fields the caller's schema does not explicitly override — specifically, it shall not wipe `EmbeddedData` nodes that set piped-field values used by Modern Workflows.
+- **REQ-2.35** The SDK shall expose a `verify` method that fetches the live survey definition and returns a structural diff against a schema object, flagging any drift in questions, blocks, flow, and survey options.
+
+#### Survey protection helpers
+
+- **REQ-2.36** Where the caller enables "prevent resubmission" via schema, the SDK shall set `BallotBoxStuffingPrevention: "true"` and `BallotBoxStuffingPreventionBehavior: "DefaultMessage"` in `SurveyOptions`. See [`docs/survey-protection.md`](./docs/survey-protection.md).
+- **REQ-2.37** If a schema specifies a custom `SurveyLinkCompletedMessage` as inline HTML, then the SDK shall fail fast with a typed `ConfigurationError` explaining that the Qualtrics Options API requires a message-library reference, and shall point at the UI-only workaround until `qsurvey libraries` ships.
+- **REQ-2.38** The SDK shall expose a typed helper for building post-submit guard flows: a Branch flow element whose condition evaluates an embedded-data flag (e.g., `submission_status == "submitted"`) and routes completed responses to a caller-specified terminal block.
+
+#### Safe URLs
+
+- **REQ-2.39** The SDK shall expose a typed helper for building a Qualtrics `Q_R` resume URL. The helper shall NOT append `Q_R_DEL=1` by default, and the parameter to enable it shall be named `deleteExistingResponse` with inline documentation stating "destructive to completed responses; never use in URLs that may reach an applicant after submission." See [`docs/gotchas.md`](./docs/gotchas.md#q_r_del-wipes-completed-responses).
+
+### Transport: MCP-first, HTTP-optional (added April 2026 after overlap audit)
+
+After auditing overlap against the Qualtrics MCP surface (both Qualtrics' auto-generated per-API MCP servers and the community `yrvelez/qualtrics-mcp-server`), the SDK's primary transport is MCP. Hand-rolled HTTP is a fallback, not the default.
+
+Rationale: ~50–60% of REQ-2.1 through REQ-2.6 duplicate capabilities an MCP server already exposes. The non-overlapping portion — declarative schemas (REQ-2.7 through REQ-2.12), idempotent sync with UI-node preservation (REQ-2.34), the verify method (REQ-2.35), the display-logic/choice-field correctness REQs (REQ-2.28 through REQ-2.33), the survey-protection helpers (REQ-2.36 through REQ-2.38), the Q_R resume-URL helper (REQ-2.39), and type coverage across question types (REQ-2.25 through REQ-2.27) — is the actual moat and is not provided by any MCP server.
+
+- **REQ-2.40** The SDK shall expose a transport abstraction with at least two implementations: `mcp` (routed through an MCP server configured at client construction) and `http` (hand-rolled HTTPS against the Qualtrics REST API).
+- **REQ-2.41** The default transport shall be `mcp` when an MCP server is configured, and `http` otherwise.
+- **REQ-2.42** Where the `mcp` transport is selected, the SDK shall implement REQ-2.1 through REQ-2.6 (basic CRUD) by invoking MCP tools rather than issuing HTTPS requests directly.
+- **REQ-2.43** The SDK's typed error hierarchy (REQ-2.16) shall apply regardless of transport. When the MCP transport surfaces a tool error, the SDK shall map it to the appropriate typed exception before throwing.
 
 ### Acceptance criteria for shipping the SDK
 
@@ -319,6 +366,53 @@ Spec 1 depends on Spec 2. Spec 3 depends on Spec 2. Spec 2 stands alone. The cor
 - IWDWYT. Different product, different population, different conversation.
 - Plant Powered Pixels as a services business. Different model entirely — not a product spec.
 - Political polling, market research, or any non-research adjacent market. Valid future expansion directions, but not v0, v1, or v2 scope.
+
+---
+
+## Spec 4 — UI-parity fixture harness (cross-cutting, applies to SDK)
+
+### Purpose
+
+Prevent the class of silent-failure bug that cost the author a day during CSSA RFA 2 launch: the SDK's generated payloads passed every check yet diverged from Qualtrics UI–saved payloads in runtime-load-bearing ways (field name, missing scaffolding fields, missing placeholder strings). This spec makes that divergence a test failure with a named, linked remediation.
+
+### Users
+
+**Primary:** SDK contributors, both human and LLM-assisted. When a contributor adds or modifies a question-type factory or a display-logic helper, the fixture harness fails CI unless the produced payload matches a known-good UI-saved reference, forcing the contributor to notice fields the Qualtrics UI silently adds that they may have omitted.
+
+**Secondary:** Downstream SDK consumers with unusual custom workflows. They can add their own fixtures to catch regressions on their specific edge cases.
+
+### Goals
+
+- **Catch field-name bugs like `DisplayLogic` vs `InPageDisplayLogic` at unit-test time**, not in production.
+- **Keep the SDK's output indistinguishable from the Qualtrics UI's**, so manual UI edits to SDK-managed surveys round-trip cleanly.
+- **Document which fields are "runtime-critical" vs "cosmetic"** so diffs produce actionable errors, not noise.
+
+### Non-goals
+
+- Integration tests against a live Qualtrics account. Those are separate; this spec is purely about fixture-based unit parity.
+- Fuzzing the Qualtrics API for undocumented behavior. The fixtures are canonical examples, not exhaustive.
+
+### Requirements
+
+- **REQ-4.1** The project shall ship a fixture set of UI-saved Qualtrics question JSON snapshots under `tests/fixtures/ui-snapshots/`. The initial set shall cover at least: MC/SAVR, MC/MACOL, MC/MAVR, TE/SL, TE/ML, TE/ESTB, Matrix/Likert, FileUpload, DB/TB, and a question with `InPageDisplayLogic`.
+- **REQ-4.2** For each supported question type, the SDK shall include a unit test that diffs the SDK's `buildQuestionPayload` output against the corresponding UI-saved fixture and fails on divergence in any field marked runtime-critical.
+- **REQ-4.3** The project shall document the fixture regeneration procedure in `tests/fixtures/README.md`: open the Qualtrics UI, create a canonical question, fetch the live JSON via `GET /survey-definitions/{id}`, extract the `Questions[QID]` object, and commit it with a dated filename (e.g., `mc-savr.2026-04.json`).
+- **REQ-4.4** When a fixture test fails, the error message shall name the diverging field, show the UI-saved value, show the SDK-produced value, and link to the entry in `docs/gotchas.md` that explains why the field matters.
+- **REQ-4.5** The fixtures shall be re-validated against a live Qualtrics account at least quarterly, and after any Qualtrics platform release note touching survey structure. The validation procedure shall live alongside the fixtures in `tests/fixtures/README.md`.
+- **REQ-4.6** Fields on UI-saved fixtures shall be classified as "runtime-critical" (diff must match; failure blocks CI) or "cosmetic" (diff may differ; informational only). The classification list shall live in `tests/fixtures/field-classification.json` and shall be reviewed against CSSA `LESSONS.md` whenever a new gotcha is documented.
+
+### Acceptance criteria for shipping the fixture harness
+
+1. The 10 baseline question types in REQ-4.1 are present with UI-saved snapshots.
+2. `npm test` (or `pnpm test`) runs the UI-parity suite and passes against the stub SDK.
+3. A deliberate regression — e.g., renaming `InPageDisplayLogic` to `DisplayLogic` in the SDK builder, or removing `ChoiceOrder` — fails the suite with a message naming the exact field and linking to `docs/gotchas.md`.
+4. Regenerating a fixture is a single documented command (or a three-step documented procedure if no single command is feasible).
+
+### Design notes
+
+- Fixtures are human-readable JSON, committed alongside their regeneration date in the filename. Binary fixtures or snapshots-as-strings are forbidden.
+- The field-classification file is the source of truth for "does this diff matter?" and is itself reviewed as part of every new gotcha entry. A gotcha that reveals a new runtime-critical field is not closed until the classification reflects it.
+- The harness has deliberately no dependency on a live Qualtrics account at test time, so CI runs offline.
 
 ---
 
