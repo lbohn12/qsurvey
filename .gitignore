@@ -1,0 +1,22 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# Node / TypeScript
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.npm/
+.pnpm-store/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Test / coverage artifacts
+coverage/
+.nyc_output/
