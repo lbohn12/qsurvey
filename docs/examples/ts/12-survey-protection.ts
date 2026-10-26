@@ -1,8 +1,8 @@
 /**
  * Example 12 — Turn on "Prevent Multiple Submissions" via the survey-options API.
  *
- * Demonstrates REQ-2.36 from spec.md — the primary defense against the post-submit
- * resubmission bug seen on the origin project. This is cookie-based (same-browser only);
+ * Demonstrates REQ-2.36 from spec.md — one defense against duplicate submissions.
+ * This setting is cookie-based (same-browser only);
  * pair with the flow branch guard (example 10) for cross-device defense.
  *
  * See docs/survey-protection.md for the full lever-vs-threat-model matrix.

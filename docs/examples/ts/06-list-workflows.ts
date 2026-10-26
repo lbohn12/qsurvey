@@ -1,14 +1,12 @@
 /**
  * Example 06 — List workflows.
  *
- * This example is deliberately the one likely to fail on a
- * survey-design-only API token. If you see HTTP 403, your token is
- * missing the "Manage Workflows Across Projects" user permission —
- * see docs/request-for-permissions.md for the fix.
+ * Workflow API access depends on your Qualtrics brand and user permissions.
+ * If this call returns HTTP 403, check the response and confirm the required
+ * permission with your brand administrator.
  *
- * Required user permissions: Access API, Manage Workflows Across Projects.
- * Required OAuth scopes:     read:workflows (or manage:all — the narrow scope
- *                             is buggy on some tenants).
+ * Likely user permission: Access API; one tenant also required Manage Workflows Across Projects.
+ * Likely OAuth scope: read:workflows. Confirm both for your brand.
  *
  * Failure symptom if missing: HTTP 403 with permission key `manageWorkflows`.
  *

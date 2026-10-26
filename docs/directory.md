@@ -1,6 +1,6 @@
 # Directory (XM Directory)
 
-Qualtrics' XM Directory is the contact database that sits behind mailing-list distributions, CX/EX transactions, and contact-scoped workflows. For research staff building an application portal, the directory is usually a passive dependency — you create one mailing list, you drop applicants into it, you pull links or responses back out.
+Qualtrics' XM Directory is the contact database that sits behind mailing-list distributions, CX/EX transactions, and contact-scoped workflows. For a public intake survey, the directory can provide mailing lists and contact-specific links.
 
 **Prerequisites:** Access API + **Access XM Directory** for reads, **Edit XM Directory** for writes. Brand-admin operations additionally need **Manage Directories**. See [`permissions-and-scopes.md`](./permissions-and-scopes.md#directory-xm-directory).
 
@@ -11,7 +11,7 @@ Qualtrics' XM Directory is the contact database that sits behind mailing-list di
 | **Directory** | The top-level contact store. One per brand by default; enterprise tenants often have one per division. Has an ID like `POOL_…`. |
 | **Contact** | An individual person with email, name, phone, embedded data, language, etc. Has an ID like `CID_…`. |
 | **Mailing list** | A named subset of contacts within a directory. Has an ID like `CG_…` or `ML_…` depending on brand vintage. |
-| **Transaction** | A timestamped event attached to a contact (CX/EX). Rarely used by research staff; documented for completeness. |
+| **Transaction** | A timestamped event attached to a contact (CX/EX). Rarely used by technical users; documented for completeness. |
 | **Sample** | A selection of contacts drawn from a directory. Research Core only; out of scope for qsurvey v0. |
 
 ## Discover your directory
@@ -35,13 +35,13 @@ Response has a `contacts` array and a `nextPage` token. Contacts have this shape
 ```json
 {
   "contactId": "CID_abc",
-  "firstName": "Jordan",
-  "lastName": "Rivera",
-  "email": "jordan@example.edu",
+  "firstName": "Alex",
+  "lastName": "Example",
+  "email": "alex@example.org",
   "phone": null,
   "language": "EN",
-  "extRef": "applicant-117",
-  "embeddedData": { "institution": "Example University", "cohort": "2026" },
+  "extRef": "respondent-117",
+  "embeddedData": { "organization": "Example Organization", "group": "sample" },
   "unsubscribed": false
 }
 ```
@@ -56,9 +56,9 @@ X-API-TOKEN: {token}
 {
   "firstName": "Jordan",
   "lastName": "Rivera",
-  "email": "jordan@example.edu",
-  "extRef": "applicant-117",
-  "embeddedData": { "institution": "Example University" }
+  "email": "jordan@example.org",
+  "extRef": "respondent-117",
+  "embeddedData": { "organization": "Example Organization" }
 }
 ```
 
@@ -71,7 +71,7 @@ PUT /API/v3/directories/{directoryId}/contacts/{contactId}
 Content-Type: application/json
 X-API-TOKEN: {token}
 
-{ "embeddedData": { "reviewerAssigned": "jdoe@example.edu" } }
+{ "embeddedData": { "reviewerAssigned": "reviewer@example.org" } }
 ```
 
 PUT is a merge, not a replace — fields you omit are left unchanged. The exception is `embeddedData`: the keys you provide are merged with existing keys, but setting a key to `null` removes it.
@@ -83,7 +83,7 @@ POST /API/v3/directories/{directoryId}/mailinglists
 Content-Type: application/json
 X-API-TOKEN: {token}
 
-{ "name": "2026 program applicants", "ownerId": "UR_your_user_id" }
+{ "name": "Example Contact List", "ownerId": "UR_your_user_id" }
 ```
 
 ## Add a contact to a mailing list

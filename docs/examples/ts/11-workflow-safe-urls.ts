@@ -1,9 +1,9 @@
 /**
- * Example 11 — Build a Qualtrics Q_R resume URL without the destructive Q_R_DEL=1.
+ * Example 11 — Build a Qualtrics Q_R resume URL without Q_R_DEL=1 by default.
  *
- * Demonstrates REQ-2.39 from spec.md. See docs/gotchas.md#q_r_del1-wipes-completed-responses
- * and the internal post-mortem for the background — why this helper exists and why
- * appending Q_R_DEL=1 to applicant-facing URLs is never correct.
+ * Demonstrates REQ-2.39 from spec.md. See docs/gotchas.md#q_r_del1-replaces-the-original-response-when-a-retake-is-submitted
+ * and this guide for the background — why this helper exists and why
+ * Q_R_DEL=1 is only for intentional retake-and-replace flows.
  *
  * This is a pure function example; no network calls. Runs anywhere.
  *
@@ -19,18 +19,16 @@ type ResumeUrlOptions = {
    * email render time. Default matches the canonical pattern where a flow
    * EmbeddedData node sets `response_id` from `${e://Field/ResponseID}`.
    * Using the built-in `ResponseID` directly in workflow emails does NOT
-   * resolve — see the internal post-mortem.
+   * resolve — see this guide.
    */
   responseIdField?: string;
 
   /**
-   * DANGEROUS. Only set to true for resume URLs that are guaranteed to
-   * be used by respondents whose response is NOT yet complete — this
-   * parameter deletes the referenced response and creates a new one,
-   * which silently wipes data from applicants who have already submitted.
+   * Only set to true when an intentional retake should replace the
+   * referenced response after the respondent submits the retake.
    *
    * Default: false. If you're tempted to set this to true, read
-   * docs/gotchas.md#q_r_del1-wipes-completed-responses first.
+   * docs/gotchas.md#q_r_del1-replaces-the-original-response-when-a-retake-is-submitted first.
    */
   deleteExistingResponse?: boolean;
 };
@@ -61,9 +59,9 @@ function main() {
   console.log("  " + safe);
   console.log();
   console.log("This URL:");
-  console.log("  - resumes the applicant's in-progress response without data loss");
+  console.log("  - resumes the respondent's in-progress response without data loss");
   console.log("  - sends them to the End-of-Survey page if their response is already submitted");
-  console.log("  - never wipes a completed submission");
+  console.log("  - leaves Q_R_DEL=1 out unless replacement is intentional");
 
   // Deliberate contrast. Use only if you understand what you're turning on.
   // const destructive = buildResumeUrl({

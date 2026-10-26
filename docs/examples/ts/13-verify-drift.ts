@@ -2,8 +2,8 @@
  * Example 13 — Verify a live survey against a schema and report drift.
  *
  * Demonstrates REQ-2.35 from spec.md — the verify method that catches the
- * intermittent field-drop bug (the internal post-mortem), display-logic
- * field-placement errors (the internal post-mortem), and options regressions after
+ * intermittent field-drop bug (this guide), display-logic
+ * field-placement errors (this guide), and options regressions after
  * manual UI edits.
  *
  * The real SDK abstracts this into `await sdk.verify(surveyId, schema)`. This
@@ -31,7 +31,7 @@ const base = `https://${dc}.qualtrics.com/API/v3`;
 // caller; this is a minimal demo.
 const expectedSchema = {
   // Every question with a DataExportTag in this set must have ForceResponse ON.
-  requiredQuestionTags: new Set(["applicant_name", "applicant_email"]),
+  requiredQuestionTags: new Set(["respondent_name", "respondent_email"]),
 
   // Every question with a DataExportTag in this set must have InPageDisplayLogic
   // (not DisplayLogic) set, referencing a parent-qid condition.
@@ -57,7 +57,7 @@ async function main() {
 
   const drifts: Drift[] = [];
 
-  // 1. ForceResponse checks (catches the internal post-mortem).
+  // 1. ForceResponse checks (catches this guide).
   for (const [qid, q] of Object.entries<any>(def.Questions)) {
     const tag = q.DataExportTag;
     if (!expectedSchema.requiredQuestionTags.has(tag)) continue;
@@ -67,7 +67,7 @@ async function main() {
     }
   }
 
-  // 2. Display-logic field-placement checks (catches the internal post-mortem).
+  // 2. Display-logic field-placement checks (catches this guide).
   for (const [qid, q] of Object.entries<any>(def.Questions)) {
     const tag = q.DataExportTag;
     if (!expectedSchema.mustHaveInPageDisplayLogic.has(tag)) continue;
@@ -94,7 +94,7 @@ async function main() {
     switch (d.kind) {
       case "force-response-missing":
         console.error(
-          `  [${d.tag} / ${d.qid}] ForceResponse expected ON — re-push to reconcile. See the internal post-mortem.`
+          `  [${d.tag} / ${d.qid}] ForceResponse expected ON — re-push to reconcile. See this guide.`
         );
         break;
       case "display-logic-in-wrong-field":

@@ -33,7 +33,7 @@ Content-Type: application/json
 X-API-TOKEN: {token}
 
 {
-  "SurveyName": "2026 Grant Application",
+  "SurveyName": "2026 Intake Survey",
   "Language": "EN",
   "ProjectCategory": "CORE"
 }
@@ -63,7 +63,7 @@ X-API-TOKEN: {token}
 
 {
   "Type": "Standard",
-  "Description": "Applicant background"
+  "Description": "Respondent background"
 }
 ```
 
@@ -79,8 +79,8 @@ Content-Type: application/json
 X-API-TOKEN: {token}
 
 {
-  "QuestionText": "What is your institutional affiliation?",
-  "DataExportTag": "institution",
+  "QuestionText": "What is your organization?",
+  "DataExportTag": "organization",
   "QuestionType": "TE",
   "Selector": "SL",
   "Configuration": {
@@ -108,7 +108,7 @@ The `QuestionType` + `Selector` pair determines the widget:
 | `FileUpload` | `FileUpload` | File upload |
 | `DB` | `TB` | Descriptive (text block) |
 
-> This is not the exhaustive list — Qualtrics supports dozens of combinations. The `qsurvey` SDK will expose typed factories (REQ-2.26) for the research-common subset; deeper coverage is added as real users ask for it (per the origin project-RFA-led scope of v0).
+> This is not an exhaustive list — Qualtrics supports dozens of combinations. The examples here cover a small subset; check the official API reference for other question types and settings.
 
 ## Update a question
 
@@ -133,7 +133,7 @@ X-API-TOKEN: {token}
     {
       "Type": "Branch",
       "FlowID": "FL_3",
-      "Description": "Skip academia section for industry applicants",
+      "Description": "Show this section for the selected response",
       "BranchLogic": {
         "0": {
           "0": {
@@ -230,7 +230,7 @@ Questions created via the API are structurally indistinguishable from UI-created
 
 ## Verify after every update
 
-Qualtrics' question PUT endpoint occasionally drops fields silently even when supplied (observed with `ForceResponse`; see the internal post-mortem). Always run `sdk.verify(surveyId, schema)` after any sync to catch drift. See [`idempotent-sync.md`](./idempotent-sync.md) and `spec.md` REQ-2.35.
+Qualtrics' question PUT endpoint occasionally drops fields silently even when supplied (observed with `ForceResponse`; see this guide). Always run `sdk.verify(surveyId, schema)` after any sync to catch drift. See [`idempotent-sync.md`](./idempotent-sync.md) and `spec.md` REQ-2.35.
 
 ## See also
 

@@ -1,27 +1,25 @@
-# MCP dev setup — hit the Qualtrics API without rebuilding the client
+# MCP setup notes
 
-Model Context Protocol (MCP) servers give Claude Code, Cursor, and other MCP-aware clients direct access to the Qualtrics API surface. This doc covers two paths: the **official Qualtrics MCP** (auto-generated per-API) and the **community `yrvelez/qualtrics-mcp-server`** (a single server with 53 tools).
+Model Context Protocol (MCP) servers give Claude Code, Cursor, and other MCP-aware clients direct access to Qualtrics API operations. Qualtrics documents an official MCP server for each API in its public reference. A community server is also available; check its current repository for setup and tool coverage.
 
 ## Why an MCP server belongs in this repo
 
-Even though `qsurvey` is a pre-v0 project, the fastest way to experiment against a live Qualtrics brand during SDK development is to shell out to an MCP server rather than hand-rolling an HTTP client. The SDK itself will eventually (per [`spec.md`](../spec.md) REQ-2.40) support MCP as a first-class transport. During dev, an MCP server configured in `.mcp.json` at the repo root means any Claude Code or Cursor session in this repo can just ask: "list the surveys," "fetch the question payload for QID386," "check if `InPageDisplayLogic` is set on the follow-up."
+An MCP server can give an AI coding agent access to the API tools configured for the user's Qualtrics account. Use read-only tools first and confirm the server's current tool list and permissions before allowing writes.
 
-There's a real limit to flag though: the current MCP servers surface CRUD-style tools over the Qualtrics API. They do NOT expose higher-level survey-as-code helpers — `InPageDisplayLogic` correctness, flow branch guards, `BallotBoxStuffingPrevention` defaults, Modern Workflow email safe-URL builders. Those gaps are exactly what the `qsurvey` SDK fills. See [`gotchas.md`](./gotchas.md#why-qsurvey-exists-on-top-of-mcp) for the overlap audit.
+MCP tools expose the documented API operations; these notes show additional checks and patterns an AI agent can apply around those calls. This repository does not currently ship a higher-level SDK. See [`coverage-and-limitations.md`](./coverage-and-limitations.md) before treating any example as implemented functionality.
 
 ## Option 1: Qualtrics' official MCP
 
-Qualtrics (as of April 2026) publishes MCP servers auto-generated from their API specifications, with one MCP tool per endpoint. Each Qualtrics API has its own MCP server.
+Qualtrics' current API getting-started guide describes MCP servers for the APIs in its public reference. Check the official MCP guide for current setup and availability.
 
 **Pros:**
 
-- Maintained by Qualtrics — tracks API changes without community lag.
-- Wider coverage than community servers (includes newer/less-common APIs).
-- Enterprise-blessed.
+- Maintained by Qualtrics.
+- Based on APIs in the official reference.
 
 **Cons:**
 
-- Likely requires expanded token scopes that your user may not have. Personal tokens with only "Survey Platform" permissions typically can't use the MCP's `/workflows` or `/directories` tools — see [`permissions-and-scopes.md`](./permissions-and-scopes.md) for the matrix and [`request-for-permissions.md`](./request-for-permissions.md) for the email template to send your brand admin.
-- Setup requires enterprise-admin involvement. Individual researchers may hit a wall.
+- Tool availability and access depend on your Qualtrics account, license, and brand configuration. See [`permissions-and-scopes.md`](./permissions-and-scopes.md) for best-effort troubleshooting notes.
 - Install instructions live behind the Qualtrics developer portal (`api.qualtrics.com`); some URLs require authentication to access.
 
 **Setup — pointer, not instructions:** See the Qualtrics developer portal's MCP overview. If your URL 404s without authentication, you may need an enterprise developer account. Contact your brand admin for access.
@@ -30,18 +28,16 @@ If you successfully configure the official server, update `.mcp.json` at the rep
 
 ## Option 2: `yrvelez/qualtrics-mcp-server` (community)
 
-A single MCP server with 53 tools across 8 domains (Surveys, Questions, Blocks, Survey Flow, Responses, Contacts, Distributions, Webhooks). Installable via npm.
+A community-maintained MCP server. Tool coverage and installation steps can change; check its [repository](https://github.com/yrvelez/qualtrics-mcp-server).
 
 **Pros:**
 
-- Works with personal API tokens; no enterprise provisioning required.
-- Self-hostable.
-- Covers the bulk of survey-building use cases.
+- Check the current project documentation for supported authentication and deployment options.
 
 **Cons:**
 
 - Community-maintained; lags official API changes.
-- Does not surface `InPageDisplayLogic`, flow branch builders, `BallotBoxStuffingPrevention` defaults, or Modern Workflow editing. The `qsurvey` SDK fills these gaps.
+- Check the tools exposed by the server and the official API reference for current coverage. Higher-level survey-as-code helpers in this repository are design notes, not implemented code.
 
 **Setup:**
 
@@ -94,9 +90,9 @@ Three token hygiene rules:
 
 ## What to use MCP for in dev
 
-- **Exploratory reads.** "What's the current flow for SV_abc? What's the `InPageDisplayLogic` on question QID386?" Faster than scripting a one-off HTTP call.
+- **Exploratory reads.** "What's the current flow for SV_abc? What's the `InPageDisplayLogic` on question QID102?" Faster than scripting a one-off HTTP call.
 - **Testing fixture-harness changes.** When you add a new fixture, use the MCP to fetch the UI-saved version from a live survey, save it to `tests/fixtures/ui-snapshots/`, then iterate on the SDK builder until its output matches.
-- **Debugging the origin project-style mysteries.** When a display-logic rule isn't firing, ask the MCP to dump the full question JSON. Faster than curl with the right headers.
+- **Debugging display logic.** When a rule isn't firing, use the MCP to inspect the full question JSON before changing the survey.
 
 ## What NOT to use MCP for in dev
 

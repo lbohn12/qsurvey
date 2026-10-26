@@ -1,7 +1,7 @@
 /**
  * Example 08 — Configure InPageDisplayLogic (the correct field) on a child question.
  *
- * This is the fix for the origin project bug documented in docs/display-logic.md and
+ * This demonstrates the pattern documented in docs/display-logic.md and
  * docs/gotchas.md#inpagedisplaylogic-is-a-separate-field-from-displaylogic.
  *
  * Demonstrates REQ-2.28, REQ-2.29, REQ-2.30 from spec.md:

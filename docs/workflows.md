@@ -1,15 +1,15 @@
 # Workflows
 
-> **The permission the author's original token did not have.** If you see `insufficient permissions` or a 403 on any `/workflows/*` endpoint, your personal API token is missing the **Manage Workflows Across Projects** user permission. Copy [`request-for-permissions.md`](./request-for-permissions.md), fill it in, and send it to your brand admin. Nothing else in this doc matters until that is fixed.
+> One tested account needed the **Manage Workflows Across Projects** permission for workflow API calls. If you see a 403, inspect the response and confirm the required permission with your brand administrator; requirements may differ by account.
 
-Workflows are Qualtrics' automation layer. They replace the older "Actions" concept. A workflow is a triggered sequence: something happens (an **event**), and then one or more **tasks** run in response. The research-common uses are:
+Workflows are Qualtrics' automation layer. They replace the older "Actions" concept. A workflow is a triggered sequence: something happens (an **event**), and then one or more **tasks** run in response. The common uses are:
 
 - "When a response is submitted to survey X, post to Slack."
 - "When a new contact is added to mailing list Y, send them a confirmation email."
 - "Every Monday at 9am, export last week's responses to S3."
 - "When a response score crosses a threshold, create a ticket in Jira."
 
-**Prerequisites:** Access API + Manage Workflows Across Projects. OAuth: `manage:all` is the reliable scope; fine-grained `read:workflows` / `manage:workflows` work on newer brands but not all. See [`permissions-and-scopes.md`](./permissions-and-scopes.md#workflows).
+**Prerequisites:** Access API and whatever workflow permissions your brand requires. One tenant needed Manage Workflows Across Projects for API workflow calls; OAuth scope behavior also varied in the author's testing. Confirm current requirements with the official API reference and your brand administrator. See [`permissions-and-scopes.md`](./permissions-and-scopes.md#workflows).
 
 ## Concepts
 
@@ -76,7 +76,7 @@ X-API-TOKEN: {token}
       "type": "slack.message",
       "config": {
         "webhookUrl": "https://hooks.slack.com/services/…",
-        "text": "New application from ${q://QID5/ChoiceTextEntryValue}"
+        "text": "New response from ${q://QID5/ChoiceTextEntryValue}"
       }
     }
   ]
@@ -122,7 +122,7 @@ GET /API/v3/workflows/{workflowId}/runs/{runId}
 X-API-TOKEN: {token}
 ```
 
-The per-run payload includes each task's output and any error. This is the right endpoint to wire up if you want to build "what failed last night?" dashboards for a research workflow.
+The per-run payload includes each task's output and any error. This endpoint can support monitoring dashboards for workflow runs.
 
 ## Enabling / disabling
 
@@ -142,7 +142,7 @@ Setting `status` to `inactive` stops the workflow firing without deleting it. `a
 
 ## Email-task pitfalls (read before wiring up a reminder email)
 
-Qualtrics' Modern Workflow email tasks have three silent-failure modes that have cost real time on the origin project. The fixes are documented in detail in [`workflow-emails.md`](./workflow-emails.md); briefly:
+Qualtrics' Modern Workflow email tasks have several failure modes that can be difficult to diagnose. The following patterns were observed in testing and may depend on workflow configuration. See [`workflow-emails.md`](./workflow-emails.md):
 
 1. **Piped question values (`${q://QID.../QuestionTextEntry}`) render empty in workflow email contexts.** To, Subject, Body, URL params — any of them becomes `""` silently. Use `${e://Field/…}` embedded-data fields instead, set via a flow-level `EmbeddedData` node immediately after the capture block.
 2. **The built-in `${e://Field/ResponseID}` also fails** in embedded-data-triggered workflow emails. Set an explicit lowercase `response_id` field in the flow and reference that.
@@ -150,7 +150,7 @@ Qualtrics' Modern Workflow email tasks have three silent-failure modes that have
 
 ## The 7-day delay cap
 
-Modern Workflow Delay blocks max out at 7 days per block. Patterns that break: "fire on a fixed calendar date regardless of when each applicant started." Workarounds (Scheduled-trigger workflows, chained delays, manual batch sends) are in [`workflow-emails.md#the-7-day-delay-cap`](./workflow-emails.md#the-7-day-delay-cap-and-the-may-24-problem).
+Modern Workflow Delay blocks max out at 7 days per block. Patterns that break: "fire on a fixed calendar date regardless of when each respondent started." Workarounds (Scheduled-trigger workflows, chained delays, manual batch sends) are in [`workflow-emails.md#the-7-day-delay-cap`](./workflow-emails.md#the-7-day-delay-cap-and-the-may-24-problem).
 
 ## The `Run Immediately` test-run trap
 

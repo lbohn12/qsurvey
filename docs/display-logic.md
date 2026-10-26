@@ -22,11 +22,11 @@ The UI-produced `InPageDisplayLogic` structure is what the `qsurvey` SDK must ma
   "InPageDisplayLogic": {
     "0": {
       "0": {
-        "QuestionID": "QID385",
+        "QuestionID": "QID100",
         "QuestionIsInLoop": "no",
-        "ChoiceLocator": "q://QID385/SelectableChoice/1",
+        "ChoiceLocator": "q://QID100/SelectableChoice/1",
         "Operator": "Selected",
-        "QuestionIDFromLocator": "QID385",
+        "QuestionIDFromLocator": "QID100",
         "LeftOperand": "q://undefined/undefined",
         "Type": "Expression",
         "LogicType": "Question",
@@ -63,10 +63,10 @@ Qualtrics uses `Conjuction` (their typo, preserved) on the 2nd and subsequent co
 "InPageDisplayLogic": {
   "0": {
     "0": {
-      "QuestionID": "QID389",
-      "ChoiceLocator": "q://QID389/SelectableChoice/1",
+      "QuestionID": "QID101",
+      "ChoiceLocator": "q://QID101/SelectableChoice/1",
       "Operator": "Selected",
-      "QuestionIDFromLocator": "QID389",
+      "QuestionIDFromLocator": "QID101",
       "LeftOperand": "q://undefined/undefined",
       "Type": "Expression",
       "LogicType": "Question",
@@ -74,10 +74,10 @@ Qualtrics uses `Conjuction` (their typo, preserved) on the 2nd and subsequent co
       "Description": "<span class=\"ConjDesc\">If</span> <span class=\"LeftOpDesc\">SUBG</span> <span class=\"OpDesc\">Is Selected</span> "
     },
     "1": {
-      "QuestionID": "QID389",
-      "ChoiceLocator": "q://QID389/SelectableChoice/2",
+      "QuestionID": "QID101",
+      "ChoiceLocator": "q://QID101/SelectableChoice/2",
       "Operator": "Selected",
-      "QuestionIDFromLocator": "QID389",
+      "QuestionIDFromLocator": "QID101",
       "LeftOperand": "q://undefined/undefined",
       "Type": "Expression",
       "LogicType": "Question",
@@ -102,12 +102,12 @@ Per [`spec.md`](../spec.md) REQ-2.28 through REQ-2.31:
 import { buildInPageDisplayLogic } from "qsurvey";
 
 const logic = buildInPageDisplayLogic({
-  when: { questionId: "QID385", choiceKey: "1", label: "Yes" },
+  when: { questionId: "QID100", choiceKey: "1", label: "Yes" },
   conjunctions: [],  // empty for single-condition
 });
 
 // Patch onto an existing question:
-await sdk.questions.update(surveyId, "QID386", {
+await sdk.questions.update(surveyId, "QID102", {
   ...existingQuestion,
   InPageDisplayLogic: logic,
   DisplayLogic: undefined,  // omit from payload; see REQ-2.31
@@ -127,7 +127,7 @@ When display logic looks right but the follow-up doesn't render at runtime:
 1. **Fetch the question JSON via `GET /survey-definitions/{id}`.** Check: is the rule in `InPageDisplayLogic` (correct) or `DisplayLogic` (wrong)?
 2. **Confirm `inPage: true` at the top of the `BooleanExpression`.**
 3. **Confirm `QuestionIDFromLocator` and `LeftOperand: "q://undefined/undefined"` are both present on each condition.**
-4. **Confirm the `ChoiceLocator` references an existing choice key.** `q://QID385/SelectableChoice/1` must correspond to a real choice `1` in the parent's `Choices` object.
+4. **Confirm the `ChoiceLocator` references an existing choice key.** `q://QID100/SelectableChoice/1` must correspond to a real choice `1` in the parent's `Choices` object.
 5. **Confirm the parent question has `ChoiceOrder` set.** Missing `ChoiceOrder` is suspected to cause some runtime resolution issues. See [`choice-fields.md`](./choice-fields.md).
 6. **Republish.** Draft-vs-published gets everyone eventually.
 7. **Test in a fresh incognito window.** Browser and CDN caches linger.
@@ -138,5 +138,5 @@ If all of the above pass and the follow-up still doesn't render, capture a UI-sa
 
 - `spec.md` REQ-2.28, REQ-2.29, REQ-2.30, REQ-2.31
 - [`gotchas.md`](./gotchas.md#inpagedisplaylogic-is-a-separate-field-from-displaylogic)
-- the internal post-mortem — the post-mortem
+- [`coverage-and-limitations.md`](./coverage-and-limitations.md) — notes on which behaviors were verified against public documentation
 - [Qualtrics API docs](https://api.qualtrics.com/) — official reference (does not document the two-field model)

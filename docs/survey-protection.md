@@ -1,38 +1,38 @@
 # Survey protection — preventing resubmission and post-submit re-entry
 
-The goal: once an applicant submits, they cannot silently overwrite their submission by clicking a resume link a second time. Qualtrics provides several overlapping levers that each cover different threat scenarios. None of them alone covers everything. This doc maps which lever beats which scenario so you can stack them deliberately.
+The goal: prevent respondents from unintentionally creating or changing a response when they return through a resume link. Qualtrics provides several overlapping settings that cover different scenarios. This doc maps those settings and their limits.
 
 **Prerequisites:** Edit Survey permission for the options changes. See [`permissions-and-scopes.md`](./permissions-and-scopes.md).
 
 ## The threat model
 
-"Submitted applicant clicks their resume link again" sounds like one scenario but is actually several:
+"Submitted respondent clicks their resume link again" sounds like one scenario but is actually several:
 
 | Scenario | Description |
 | --- | --- |
-| **Same browser, same window** | Applicant submits, then clicks the welcome email link in the same browser tab where they submitted. |
-| **Same browser, fresh window** | Applicant opens a new incognito-style window and clicks the link. Cookies from submission may or may not carry depending on browser settings. |
-| **Different browser, same device** | Applicant forwards the link to a different browser or opens a different profile on the same device. |
-| **Different device** | Applicant forwards the link to their phone or a colleague. |
-| **Direct URL re-entry** | Applicant has bookmarked the in-progress URL and loads it after submitting. |
+| **Same browser, same window** | Respondent submits, then clicks the welcome email link in the same browser tab where they submitted. |
+| **Same browser, fresh window** | Respondent opens a new incognito-style window and clicks the link. Cookies from submission may or may not carry depending on browser settings. |
+| **Different browser, same device** | Respondent forwards the link to a different browser or opens a different profile on the same device. |
+| **Different device** | Respondent forwards the link to their phone or a colleague. |
+| **Direct URL re-entry** | Respondent has bookmarked the in-progress URL and loads it after submitting. |
 
 Each is a weaker attack surface than the previous, but each is different, and different levers cover different subsets.
 
 ## The levers
 
-### 1. `Q_R_DEL=1` — NOT a protection lever; a data-destruction bug
+### 1. `Q_R_DEL=1` — intentional retake-and-replace behavior
 
-Mentioning this only to be clear: `&Q_R_DEL=1` on a resume URL **deletes** the referenced response on click. It was intended to prevent duplicate responses from cross-device resumes, but it unconditionally wipes completed responses too. **Never use it** in any URL that could reach a submitted applicant. See [`gotchas.md`](./gotchas.md#q_r_del1-wipes-completed-responses).
+`&Q_R_DEL=1` is for a retake link that should replace the original response after the respondent submits the retake. Qualtrics says opening the link alone does not delete the original response. Do not include it in ordinary resume or reminder links unless replacing the response is intended. See [Qualtrics' retake-link instructions](https://www.qualtrics.com/support/survey-platform/data-and-analysis-module/retake-survey-link/) and [`gotchas.md`](./gotchas.md#q_r_del1-replaces-the-original-response-when-a-retake-is-submitted).
 
 ### 2. Survey-flow branch guard — flag-based
 
 Pattern: set an embedded-data flag (`submission_status = "submitted"`) at the end of the flow, and add a Branch at the top of the flow that routes `submission_status == "submitted"` responses to a terminal "already submitted" block.
 
-**Covers:** Any scenario where Qualtrics actually loads the completed response into the flow. Direct URL re-entry (`?Q_R=<completed_id>` without `Q_R_DEL=1`) sometimes does this, sometimes doesn't — it depends on Save-and-Continue behavior.
+**Covers:** Any scenario where Qualtrics actually loads the completed response into the flow. Direct URL re-entry (`?Q_R=<completed_id>` without `Q_R_DEL=1`) can behave differently depending on survey settings; test the respondent flow in your brand.
 
-**Does not cover:** The common case. When Save-and-Continue is enabled and `Q_R_DEL=1` is absent, Qualtrics often starts a fresh response for `?Q_R=<completed_id>`. The fresh response has no `submission_status`, so the branch guard never fires. This is the primary failure mode observed on the origin project — see the internal post-mortem.
+**Does not cover:** Cases where Qualtrics starts a fresh response for `?Q_R=<completed_id>` instead of loading the completed response into the flow. That response has no `submission_status`, so the branch guard may not fire. This was observed in one configuration; test the flow in your own brand.
 
-**SDK support:** `spec.md` REQ-2.38 — the SDK exposes `buildAlreadySubmittedGuard()` for this pattern.
+**Planned SDK support:** `spec.md` REQ-2.38 proposes a `buildAlreadySubmittedGuard()` helper for this pattern; no SDK implementation is shipped.
 
 **Verdict:** Secondary defense only. Use in combination with the next lever, not instead of it.
 
@@ -54,13 +54,13 @@ Survey option. Under the hood: Qualtrics sets a cookie on submission; on subsequ
 
 - **Via Qualtrics UI:** Survey Options → Security → Prevent Multiple Submissions → On. Set the "When a multi-submission is detected" option to "Show default message" (or a custom one if you create a library message).
 - **Via API:** set `BallotBoxStuffingPrevention: "true"` and `BallotBoxStuffingPreventionBehavior: "DefaultMessage"` in `SurveyOptions`. Requires the follow-up PUT to `/survey-definitions/{id}/options`.
-- **Via qsurvey SDK:** `spec.md` REQ-2.36 — set `preventResubmission: true` on the schema; the SDK sets both option fields.
+- **Planned qsurvey SDK behavior:** `spec.md` REQ-2.36 proposes setting `preventResubmission: true` on a schema; this is not implemented.
 
-**Verdict:** The primary lever. Covers the common case (same applicant re-clicks their own email from the same browser). Combine with the branch guard (lever 2) for belt-and-suspenders.
+**Verdict:** The primary lever. Covers the common case (same respondent re-clicks their own email from the same browser). Combine with the branch guard (lever 2) for belt-and-suspenders.
 
 ### 4. `SurveyLinkCompletedMessage` — message shown when a specific response ID is completed
 
-Survey option. When an applicant clicks `?Q_R=<completed_id>` (with or without `Q_R_DEL`), this message can intercept BEFORE any flow runs.
+Survey option. When a respondent opens `?Q_R=<completed_id>` (with or without `Q_R_DEL`), this message may intercept before any flow runs.
 
 **Covers:** Any scenario where the URL contains `Q_R=<completed_id>` and that response is in Finished state. Cross-device, cross-browser, fresh window — all work, because the check is against the response, not the browser cookie.
 
@@ -74,13 +74,13 @@ Survey option. When an applicant clicks `?Q_R=<completed_id>` (with or without `
 
 Survey option. Lets you set an end date after which the survey rejects submissions.
 
-**Covers:** Time-bounded "application deadline" semantics. Not specifically a resubmission defense, but applicants who try to re-submit after the deadline hit the close message regardless of lever 3.
+**Covers:** Time-bounded survey deadline semantics. Not specifically a resubmission defense, but respondents who try to re-submit after the deadline hit the close message regardless of lever 3.
 
-**Verdict:** Independent of resubmission prevention; set it because your grant deadline exists, not as a protection lever.
+**Verdict:** Independent of resubmission prevention; set it when the survey has a closing date, not as a protection lever.
 
 ## Recommended stack
 
-For most application-portal surveys (the origin project-style):
+For a survey that supports resumable responses:
 
 ```ts
 // Pseudo-code — real SDK surface TBD
@@ -116,11 +116,11 @@ When `BallotBoxStuffingPreventionBehavior: "DefaultMessage"` is set and a return
 
 ## What about HIPAA, PII, single-response-per-person at institutional scale?
 
-Those are different conversations. The levers here address "soft-stop this applicant from accidentally overwriting their submission." For enterprise-scale identity verification, use Qualtrics' SSO or Authenticator flow elements. Those require Qualtrics consultation and are out of scope for this SDK.
+Those are different conversations. The levers here address "soft-stop this respondent from accidentally overwriting their submission." For enterprise-scale identity verification, use Qualtrics' SSO or Authenticator flow elements. Those require Qualtrics consultation and are out of scope for this SDK.
 
 ## See also
 
 - [`gotchas.md`](./gotchas.md) — the detailed failure modes these levers protect against
 - [`idempotent-sync.md`](./idempotent-sync.md) — the verify pattern that confirms these options stay set after updates
 - [Qualtrics Security Options reference](https://www.qualtrics.com/support/survey-platform/survey-module/survey-options/survey-protection/)
-- the internal post-mortem — the original debug session that mapped this space
+- [`coverage-and-limitations.md`](./coverage-and-limitations.md) — the scope and limits of these notes

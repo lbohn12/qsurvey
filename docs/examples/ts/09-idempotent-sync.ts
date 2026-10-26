@@ -8,7 +8,7 @@
  *   2. Preserve flow nodes the schema doesn't claim (e.g., manually-added
  *      EmbeddedData nodes that drive Modern Workflows).
  *   3. Run verify after PUT to catch Qualtrics' intermittent ForceResponse drops
- *      (the internal post-mortem).
+ *      (this guide).
  *
  * This is a sketch; the real SDK will abstract this into `sdk.sync(schema)`.
  *
@@ -33,7 +33,7 @@ const base = `https://${dc}.qualtrics.com/API/v3`;
 const schema = {
   questions: [
     {
-      tag: "applicant_name",
+      tag: "respondent_name",
       text: "Your name",
       type: "TE",
       selector: "SL",
@@ -93,7 +93,7 @@ async function main() {
     console.log(`synced ${spec.tag} (${qid})`);
   }
 
-  // 4. Verify: re-fetch and confirm ForceResponse didn't drop (the internal post-mortem).
+  // 4. Verify: re-fetch and confirm ForceResponse didn't drop (this guide).
   const verifyRes = await fetch(`${base}/survey-definitions/${surveyId}`, {
     headers: { "X-API-TOKEN": token! },
   });
