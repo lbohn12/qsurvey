@@ -72,9 +72,9 @@ async function main() {
       body: JSON.stringify({
         firstName: "Ada",
         lastName: "Lovelace",
-        email: `ada+${Date.now()}@example.edu`,
+        email: `ada+${Date.now()}@example.org`,
         extRef: `example-07-${Date.now()}`,
-        embeddedData: { institution: "Example University" },
+        embeddedData: { organization: "Example Organization" },
       }),
     }),
   );

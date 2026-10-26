@@ -38,14 +38,14 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 async function main() {
   const block = await post<{ result: { BlockID: string } }>("/blocks", {
     Type: "Standard",
-    Description: "Applicant background",
+    Description: "Respondent background",
   });
   const blockId = block.result.BlockID;
   console.log(`block: ${blockId}`);
 
   const q1 = await post<{ result: { QuestionID: string } }>(`/questions?blockId=${blockId}`, {
-    QuestionText: "What is your institutional affiliation?",
-    DataExportTag: "institution",
+    QuestionText: "What is your organization?",
+    DataExportTag: "organization",
     QuestionType: "TE",
     Selector: "SL",
     Configuration: { QuestionDescriptionOption: "UseText" },
@@ -60,9 +60,9 @@ async function main() {
     Selector: "SAVR",
     SubSelector: "TX",
     Choices: {
-      "1": { Display: "Academic research" },
-      "2": { Display: "Industry R&D" },
-      "3": { Display: "Government / nonprofit" },
+      "1": { Display: "Option A" },
+      "2": { Display: "Option B" },
+      "3": { Display: "Option C" },
     },
     ChoiceOrder: ["1", "2", "3"],
     Configuration: { QuestionDescriptionOption: "UseText" },

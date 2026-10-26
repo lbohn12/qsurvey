@@ -1,6 +1,6 @@
 # qsurvey — EARS Specifications
 
-**Project:** `qsurvey` — a Qualtrics toolkit for research staff working with AI-assisted development
+**Project:** `qsurvey` — a Qualtrics toolkit for technical users working with AI-assisted development
 
 **Author:** Lincoln Bohn
 **Status:** Draft v0.1
@@ -14,7 +14,7 @@ This is a set of requirements specifications written in **EARS** (Easy Approach 
 
 1. **`qsurvey from-pdf`** — the weekend v0 CLI command. One job: turn a PDF into a live Qualtrics survey.
 2. **`qsurvey` SDK** — the typed client library underneath the CLI. Usable standalone for anyone who wants a sane Qualtrics API.
-3. **Branded portal layer** — the hosted v2 that wraps `qsurvey`-managed surveys in a researcher-controlled public portal.
+3. **Branded portal layer** — the hosted v2 that wraps `qsurvey`-managed surveys in a Qualtrics user-controlled public portal.
 
 EARS uses a small set of sentence patterns to make requirements unambiguous and testable:
 
@@ -32,19 +32,19 @@ Each spec below is structured so that every requirement is one of those patterns
 
 ### Purpose
 
-Generate a working Qualtrics survey from a source PDF in a single command. This is the thing a researcher runs when their funder hands them a 20-page RFA PDF and says "make this an application portal by next month." The command should do in one line what currently takes days of hand-translation and API wrangling.
+Generate a working Qualtrics survey from a source document in a single command. This is the thing a Qualtrics user runs when they need to turn requirements into an online form. The command should do in one line what currently takes days of hand-translation and API wrangling.
 
 ### Users
 
-**Primary:** Research staff at universities and research institutes who have an active Qualtrics enterprise license, moderate technical skills (comfortable with the terminal, can follow a README, have used Claude Code or similar), and a PDF they need to turn into a survey. This is explicitly not the non-technical PI and not the seasoned API engineer. It's the person in between — the one whose tooling options are currently either "do it by hand" or "spend three weeks learning the Qualtrics API."
+**Primary:** Technical users at universities and organizations who have an active Qualtrics enterprise license, moderate technical skills (comfortable with the terminal, can follow a README, have used Claude Code or similar), and a PDF they need to turn into a survey. This is explicitly not the non-technical project owner and not the seasoned API engineer. It's the person in between — the one whose tooling options are currently either "do it by hand" or "spend three weeks learning the Qualtrics API."
 
 **Secondary:** AI-assisted development agents (Claude Code, Cursor, etc.) operating on behalf of the primary user. The CLI's error messages, flags, and output formats should be legible to an LLM that is helping the user drive it.
 
 ### Goals
 
 - **Collapse time from PDF to working survey** from days to minutes.
-- **Eliminate the most common failure modes** that cost the author a week on the origin project RFA portal build: opaque API errors, question ID/name confusion, data center routing, brittle hand-written seed scripts.
-- **Be the kind of tool a grad student can install at 1am** with `npm install -g qsurvey` (or equivalent) and use immediately with an existing enterprise Qualtrics token.
+- **Eliminate common failure modes** encountered while building and maintaining surveys: opaque API errors, question ID/name confusion, data center routing, and brittle hand-written seed scripts.
+- **Be the kind of tool a technical user can install quickly** with `npm install -g qsurvey` (or equivalent) and use with an existing Qualtrics token.
 
 ### Non-goals (v0)
 
@@ -53,7 +53,7 @@ Generate a working Qualtrics survey from a source PDF in a single command. This 
 - Hosting anything. v0 is a local CLI.
 - Branded portals, custom domains, response forwarding, email notifications — all v2.
 - A web UI. v0 is CLI only.
-- Complex question types beyond what appears in a typical RFA or screening form (multiple choice, text entry, matrix, file upload, basic branching).
+- Complex question types beyond what appears in a typical intake or screening form (multiple choice, text entry, matrix, file upload, basic branching).
 
 ### Requirements
 
@@ -106,16 +106,16 @@ Generate a working Qualtrics survey from a source PDF in a single command. This 
 
 The v0 is shippable when all of the following are true:
 
-1. The author can run `qsurvey from-pdf ./program-rfa.pdf` against the actual RFA PDF from a production cohort grant and get a working Qualtrics survey that matches the one currently in production, modulo branding.
+1. The author can run `qsurvey from-pdf ./sample-intake.pdf` against the representative source PDF from a live survey and get a working Qualtrics survey that matches the one currently in production, modulo branding.
 2. The README contains a side-by-side comparison of the raw Qualtrics API approach (with Python, as originally built) and the `qsurvey from-pdf` approach, both producing the same survey.
-3. A researcher who has never seen the tool before can go from `npm install` to a working survey in under ten minutes, using only the README.
+3. A Qualtrics user who has never seen the tool before can go from `npm install` to a working survey in under ten minutes, using only the README.
 4. All error conditions listed above produce helpful messages, not stack traces.
 
 ### Design notes (not requirements)
 
 - The PDF parsing step will almost certainly call an LLM. Claude is the reasonable default. The LLM call should be swappable so the tool is not locked to one provider.
 - The intermediate representation format should be stable and documented. It is the contract between the parser and the survey-creation step, and it is also the thing users will version-control.
-- The author should resist adding question types beyond what appears in the origin project RFA until a real user asks for them.
+- The author should resist adding question types beyond what appears in the initial survey until a real user asks for them.
 
 ---
 
@@ -127,9 +127,9 @@ A typed client library for the Qualtrics API that is sane to use, pleasant to re
 
 ### Users
 
-**Primary:** Research software developers (staff like the author, plus the small number of engineers embedded in research centers) who need to script against Qualtrics and are currently writing brittle `requests`-based Python or fighting the official API docs.
+**Primary:** Software developers and technical users who need to script against Qualtrics and are currently writing brittle `requests`-based Python or fighting the official API docs.
 
-**Secondary:** AI coding agents generating code against Qualtrics on behalf of research staff. The SDK's types, method names, and documentation should be optimized for LLM code generation — predictable naming, full type coverage, docstrings with examples.
+**Secondary:** AI coding agents generating code against Qualtrics on behalf of technical users. The SDK's types, method names, and documentation should be optimized for LLM code generation — predictable naming, full type coverage, docstrings with examples.
 
 **Tertiary:** The `qsurvey` CLI itself, which is the first consumer of the SDK.
 
@@ -141,7 +141,7 @@ A typed client library for the Qualtrics API that is sane to use, pleasant to re
 
 ### Non-goals
 
-- Replacing the full Qualtrics API surface. Cover the 80% of operations that research staff actually use; ignore the rest until asked.
+- Replacing the full Qualtrics API surface. Cover the 80% of operations that technical users actually use; ignore the rest until asked.
 - Supporting every Qualtrics product line (CX, EX, etc.). Focus on core Survey Platform.
 - Providing a GUI, a hosted service, or any network components beyond the HTTP client.
 - Language parity. v0 is one language only. (JavaScript/TypeScript is the default assumption given the author's Claude Code workflow and the CLI target; Python is the likely second.)
@@ -196,9 +196,9 @@ A typed client library for the Qualtrics API that is sane to use, pleasant to re
 - **REQ-2.26** The SDK shall provide type definitions for every supported question type.
 - **REQ-2.27** Where the Qualtrics API returns a field the SDK does not model, the SDK shall preserve that field on the returned object under a typed `extensions` property, rather than dropping it.
 
-#### Display-logic correctness (added April 2026 after the origin project launch-day debugging)
+#### Display-logic correctness
 
-These REQs exist because today's other Qualtrics client libraries get display logic wrong in a way that passes every lint, every type check, and every visual editor inspection, yet silently fails at runtime for respondents. See [`docs/display-logic.md`](./docs/display-logic.md) and the `the internal post-mortem` entry #13 for the post-mortem.
+These requirements capture a runtime issue observed during testing: an API payload can look correct in the editor while in-page display logic does not behave as expected. See [`docs/display-logic.md`](./docs/display-logic.md) and [`docs/gotchas.md`](./docs/gotchas.md) for the current notes.
 
 - **REQ-2.28** The SDK shall write in-page display logic to the question's `InPageDisplayLogic` field, not `DisplayLogic`.
 - **REQ-2.29** When building an `InPageDisplayLogic` payload, the SDK shall include the `QuestionIDFromLocator` and `LeftOperand` placeholder fields that the Qualtrics UI emits, matching the UI-saved structure byte-for-byte.
@@ -223,7 +223,7 @@ These REQs exist because today's other Qualtrics client libraries get display lo
 
 #### Safe URLs
 
-- **REQ-2.39** The SDK shall expose a typed helper for building a Qualtrics `Q_R` resume URL. The helper shall NOT append `Q_R_DEL=1` by default, and the parameter to enable it shall be named `deleteExistingResponse` with inline documentation stating "destructive to completed responses; never use in URLs that may reach an applicant after submission." See [`docs/gotchas.md`](./docs/gotchas.md#q_r_del-wipes-completed-responses).
+- **REQ-2.39** The SDK shall expose a typed helper for building a Qualtrics `Q_R` resume URL. The helper shall NOT append `Q_R_DEL=1` by default. If the caller enables it, the parameter shall be named `deleteExistingResponse` and document that Qualtrics replaces the original response after a retake is submitted. See [`docs/gotchas.md`](./docs/gotchas.md#q_r_del1-replaces-the-original-response-when-a-retake-is-submitted).
 
 ### Transport: MCP-first, HTTP-optional (added April 2026 after overlap audit)
 
@@ -239,7 +239,7 @@ Rationale: ~50–60% of REQ-2.1 through REQ-2.6 duplicate capabilities an MCP se
 ### Acceptance criteria for shipping the SDK
 
 1. The CLI from Spec 1 is implemented entirely in terms of SDK calls, with no direct HTTP code.
-2. A researcher with no prior Qualtrics API experience can, with Claude Code's help, write a working script in under fifteen minutes that creates a survey with five questions and retrieves its anonymous link.
+2. A Qualtrics user with no prior API experience can, with an AI coding agent's help, write a working script in under fifteen minutes that creates a survey with five questions and retrieves its anonymous link.
 3. All type definitions are complete enough that a TypeScript compiler passes in strict mode against the public API.
 4. The README contains at least five runnable examples covering the common tasks.
 
@@ -255,20 +255,20 @@ Rationale: ~50–60% of REQ-2.1 through REQ-2.6 duplicate capabilities an MCP se
 
 ### Purpose
 
-Let researchers wrap a `qsurvey`-managed Qualtrics survey in a branded public-facing portal without fighting Qualtrics' native theming limits, without requiring a new vendor agreement at their institution, and without hand-rolling a workaround involving personal websites and anonymous links (as the author did for the origin project RFA portal).
+Let Qualtrics users wrap a `qsurvey`-managed survey in a branded public-facing portal with custom theming and a managed URL.
 
 This is the hosted, paid layer. It is explicitly a v2 concept and should not be built until the v0 CLI and SDK have demonstrated traction through their open-source distribution.
 
 ### Users
 
-**Primary:** Research centers and institutes that use the `qsurvey` CLI or SDK and need a public-facing intake or application portal with institutional branding.
+**Primary:** Organizations that use the `qsurvey` CLI or SDK and need a public-facing portal with custom branding.
 
-**Secondary:** Individual PIs with dissemination budgets in their grants who need a branded project website fronting a Qualtrics form.
+**Secondary:** Small organizations that need a branded website in front of a Qualtrics form.
 
 ### Goals
 
 - **Eliminate the workaround tax.** No more "embed the anonymous link behind a page on my personal site" nonsense.
-- **Bypass institutional procurement.** The researcher's institution already has a Qualtrics agreement; the portal service uses that agreement transparently. The researcher pays for the portal layer personally or via grant funds, not via a new enterprise software procurement.
+- **Fit existing workflows.** The portal service works with a user's existing Qualtrics account and does not replace Qualtrics as the survey system.
 - **Provide the features Qualtrics won't.** Custom domains, proper branding, configurable closed-state pages, reliable notifications, retry on submission failure.
 
 ### Non-goals (v2)
@@ -281,9 +281,9 @@ This is the hosted, paid layer. It is explicitly a v2 concept and should not be 
 
 #### Publication
 
-- **REQ-3.1** The service shall allow a researcher to publish any `qsurvey`-managed survey as a branded hosted portal.
-- **REQ-3.2** When a researcher publishes a portal, the service shall provision a hosted URL on a service-owned subdomain.
-- **REQ-3.3** Where the researcher configures a custom domain, the service shall serve the portal at that domain with valid TLS.
+- **REQ-3.1** The service shall allow a Qualtrics user to publish any `qsurvey`-managed survey as a branded hosted portal.
+- **REQ-3.2** When a Qualtrics user publishes a portal, the service shall provision a hosted URL on a service-owned subdomain.
+- **REQ-3.3** Where the Qualtrics user configures a custom domain, the service shall serve the portal at that domain with valid TLS.
 - **REQ-3.4** When a portal is published, the service shall fetch the current survey structure from Qualtrics via the `qsurvey` SDK and cache it for rendering.
 - **REQ-3.5** Where the underlying survey schema changes, the service shall re-fetch and update the cached structure within a configurable refresh interval.
 
@@ -303,21 +303,21 @@ This is the hosted, paid layer. It is explicitly a v2 concept and should not be 
 
 #### Branding
 
-- **REQ-3.14** Where the researcher provides a logo, the service shall display it in the portal header.
-- **REQ-3.15** Where the researcher provides color tokens, the service shall apply them to the portal theme.
-- **REQ-3.16** Where the researcher provides typography settings, the service shall apply them to the portal.
-- **REQ-3.17** Where the researcher provides custom CSS, the service shall apply it last in the cascade, allowing overrides of the default theme.
+- **REQ-3.14** Where the Qualtrics user provides a logo, the service shall display it in the portal header.
+- **REQ-3.15** Where the Qualtrics user provides color tokens, the service shall apply them to the portal theme.
+- **REQ-3.16** Where the Qualtrics user provides typography settings, the service shall apply them to the portal.
+- **REQ-3.17** Where the Qualtrics user provides custom CSS, the service shall apply it last in the cascade, allowing overrides of the default theme.
 - **REQ-3.18** The service shall provide a live preview of branding changes before publication.
 
 #### Notifications
 
-- **REQ-3.19** Where the researcher enables email notifications, the service shall send a configurable message to specified recipients on each submission.
-- **REQ-3.20** Where the researcher enables digest notifications, the service shall send a scheduled summary of submissions rather than per-submission emails.
+- **REQ-3.19** Where the Qualtrics user enables email notifications, the service shall send a configurable message to specified recipients on each submission.
+- **REQ-3.20** Where the Qualtrics user enables digest notifications, the service shall send a scheduled summary of submissions rather than per-submission emails.
 - **REQ-3.21** If a notification delivery fails, then the service shall retry with backoff and log the failure for the portal owner.
 
 #### Access control
 
-- **REQ-3.22** Each portal shall be owned by exactly one researcher account.
+- **REQ-3.22** Each portal shall be owned by exactly one user account.
 - **REQ-3.23** Where the owner invites collaborators, the service shall allow collaborators to view submissions and edit branding but not to delete the portal or transfer ownership.
 - **REQ-3.24** The service shall log all administrative actions (publication, unpublication, branding changes, collaborator changes) for audit purposes.
 
@@ -328,16 +328,16 @@ This is the hosted, paid layer. It is explicitly a v2 concept and should not be 
 
 ### Acceptance criteria for shipping v2
 
-1. The author can re-host the origin project RFA portal entirely on the service, with full branding, a custom domain, and the existing Qualtrics survey underneath, with zero manual workarounds.
-2. A researcher at another institution can publish a branded portal on top of their own Qualtrics survey without involving their institution's IT procurement.
+1. A user can publish a branded portal with a custom domain and an existing Qualtrics survey underneath.
+2. A user at another organization can publish a portal using their own Qualtrics account.
 3. The service survives a simulated Qualtrics outage without losing any submissions.
 4. All branding changes are visible in a live preview before publication.
 
 ### Design notes
 
 - The business model for v2 is the Vercel/Supabase playbook: the CLI and SDK are free and open source, the hosted portal is a paid tier. The paid tier justifies itself by removing the workaround tax, not by locking users in.
-- Pricing should be legible to researchers and should accommodate grant-based payment. One-time payments tied to a project period are likely more natural than monthly subscriptions for this audience.
-- The service should never require researchers to give up their existing Qualtrics license. It sits on top of what they already have.
+- Pricing should be legible to Qualtrics users and accommodate different project budgets.
+- The service should never require Qualtrics users to give up their existing Qualtrics license. It sits on top of what they already have.
 - Do not build this until the v0 CLI has demonstrated unambiguous pull — stars, forks, real users opening issues about real use cases. The worst failure mode for this project is building v2 speculatively before v0 has proven the audience exists.
 
 ---
@@ -350,7 +350,7 @@ All three products shall follow semantic versioning. The SDK's public API is the
 
 ### Documentation
 
-Every public method in the SDK shall have a docstring with at least one runnable example. The CLI shall ship with a README containing the side-by-side "before/after" comparison against the raw Qualtrics API. The portal service shall ship with a getting-started guide aimed at researchers who have never hosted a web service.
+Every public method in the SDK shall have a docstring with at least one runnable example. The CLI shall ship with a README containing the side-by-side "before/after" comparison against the raw Qualtrics API. The portal service shall ship with a getting-started guide aimed at Qualtrics users who have never hosted a web service.
 
 ### Testing
 
@@ -363,9 +363,8 @@ Spec 1 depends on Spec 2. Spec 3 depends on Spec 2. Spec 2 stands alone. The cor
 ### What is explicitly not in any of these specs
 
 - The AI-native survey builder that replaces Qualtrics wholesale. Different product, different conversation.
-- IWDWYT. Different product, different population, different conversation.
-- Plant Powered Pixels as a services business. Different model entirely — not a product spec.
-- Political polling, market research, or any non-research adjacent market. Valid future expansion directions, but not v0, v1, or v2 scope.
+- Other unrelated products or services. They have different users and goals and are outside the scope of this specification.
+- The portal is not intended as a general-purpose form platform or a replacement for Qualtrics.
 
 ---
 
@@ -373,7 +372,7 @@ Spec 1 depends on Spec 2. Spec 3 depends on Spec 2. Spec 2 stands alone. The cor
 
 ### Purpose
 
-Prevent the class of silent-failure bug that cost the author a day during the origin project launch: the SDK's generated payloads passed every check yet diverged from Qualtrics UI–saved payloads in runtime-load-bearing ways (field name, missing scaffolding fields, missing placeholder strings). This spec makes that divergence a test failure with a named, linked remediation.
+Prevent silent-failure bugs where generated payloads pass basic checks but diverge from UI-saved payloads in ways that may affect runtime behavior, such as field names, scaffolding fields, or placeholder values. This spec makes those differences visible to contributors.
 
 ### Users
 
@@ -399,7 +398,7 @@ Prevent the class of silent-failure bug that cost the author a day during the or
 - **REQ-4.3** The project shall document the fixture regeneration procedure in `tests/fixtures/README.md`: open the Qualtrics UI, create a canonical question, fetch the live JSON via `GET /survey-definitions/{id}`, extract the `Questions[QID]` object, and commit it with a dated filename (e.g., `mc-savr.2026-04.json`).
 - **REQ-4.4** When a fixture test fails, the error message shall name the diverging field, show the UI-saved value, show the SDK-produced value, and link to the entry in `docs/gotchas.md` that explains why the field matters.
 - **REQ-4.5** The fixtures shall be re-validated against a live Qualtrics account at least quarterly, and after any Qualtrics platform release note touching survey structure. The validation procedure shall live alongside the fixtures in `tests/fixtures/README.md`.
-- **REQ-4.6** Fields on UI-saved fixtures shall be classified as "runtime-critical" (diff must match; failure blocks CI) or "cosmetic" (diff may differ; informational only). The classification list shall live in `tests/fixtures/field-classification.json` and shall be reviewed against the internal post-mortem whenever a new gotcha is documented.
+- **REQ-4.6** Fields on UI-saved fixtures shall be classified as "runtime-critical" (diff must match; failure blocks CI) or "cosmetic" (diff may differ; informational only). The classification list shall live in `tests/fixtures/field-classification.json` and shall be reviewed against this guide whenever a new gotcha is documented.
 
 ### Acceptance criteria for shipping the fixture harness
 

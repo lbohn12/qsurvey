@@ -2,7 +2,7 @@
 
 Qualtrics has two distinct authentication models. The `qsurvey` SDK and CLI will support both, and the ergonomics of getting scope/permission wrong are very different between them, so knowing which one you have matters.
 
-- **Personal API token** — one token per user, generated in the user's own Account Settings. Authorizes as *that user*. Capability is controlled by the **user permissions** (checkboxes) set on the user, group, and division by a brand admin. Most research staff use this model.
+- **Personal API token** — one token per user, generated in the user's own Account Settings. Authorizes as *that user*. Capability is controlled by the **user permissions** (checkboxes) set on the user, group, and division by a brand admin. Most technical users use this model.
 - **OAuth 2.0 client credentials** — one client per integration, provisioned by a brand admin. Authorizes as an application. Capability is controlled by explicit **OAuth scope** strings (`read:surveys`, `manage:all`, etc.) attached to the client. Used for server-to-server integrations.
 
 If you are not sure which you have: if you copy-paste a single long string out of Account Settings → Qualtrics IDs, you have a personal API token. If you run an OAuth dance to exchange a client ID + secret for an access token, you have OAuth.
@@ -46,7 +46,7 @@ A brand admin creates the client in **Admin → OAuth Clients** (sometimes shown
 - **Grant type:** Client Credentials (for server-to-server) or Authorization Code (for apps that act on behalf of a logged-in user).
 - **Scopes:** a space-separated list of capability strings. See [`permissions-and-scopes.md`](./permissions-and-scopes.md) for the full list; common choices are `read:surveys`, `manage:surveys`, `read:survey_responses`, `manage:survey_responses`, `read:users`, and — as a blunt instrument — `manage:all`.
 
-> **Known quirk:** the fine-grained scopes (`read:surveys`, `manage:surveys`) sometimes return 403 `insufficient_scope` on endpoints the docs say they should cover. Adding `manage:all` to the client unblocks them. This is a Qualtrics-side gap, not a bug in your code. If you are building a tightly scoped integration and cannot tolerate `manage:all`, expect to iterate.
+> **Observed in one tenant:** some fine-grained scopes returned 403 `insufficient_scope` for calls expected to be allowed, while `manage:all` worked. This may depend on the brand, client configuration, or endpoint. Do not assume `manage:all` is required or universally sufficient; check the current API reference and test the narrowest suitable scope in your own tenant.
 
 ### Exchanging credentials for a token
 

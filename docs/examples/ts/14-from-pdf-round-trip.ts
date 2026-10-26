@@ -19,7 +19,7 @@
  *   - InPageDisplayLogic correctness (REQ-2.28)
  *
  * Usage (intended, not yet implemented):
- *   qsurvey from-pdf ./program-rfa.pdf --verify
+ *   qsurvey from-pdf ./sample-intake.pdf --verify
  */
 
 console.log("Example 14 is a stub. See spec.md Spec 1 (REQ-1.x) for the design.");

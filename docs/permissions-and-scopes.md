@@ -1,6 +1,6 @@
 # Permissions and scopes
 
-This is the single-source-of-truth mapping between **API endpoints**, **Qualtrics user permissions** (for personal API tokens), and **OAuth 2.0 scopes** (for OAuth clients). Every other doc in this set links here.
+This is a best-effort working map between **API endpoints**, **Qualtrics user permissions** (for personal API tokens), and **OAuth 2.0 scopes** (for OAuth clients). It is not an authoritative or exhaustive permission matrix. Qualtrics permissions, available endpoints, and OAuth behavior can vary by license, brand configuration, and account. Read [coverage and limitations](./coverage-and-limitations.md) before relying on a row.
 
 If your call to Qualtrics returns a 403, start here.
 
@@ -10,11 +10,11 @@ Each section below covers one API area. The columns are:
 
 - **Endpoint** — the HTTP method and `/API/v3/` path.
 - **Purpose** — what the endpoint does in one line.
-- **User permission** — the admin-UI checkbox that must be enabled on your user (or on a group or division you belong to) for a personal API token to reach this endpoint. Names match the labels shown under **Admin → Users → [user] → Permissions**.
-- **OAuth scope** — the scope string to include in the `scope` parameter when exchanging client credentials. `manage:all` is always sufficient. More granular scopes are listed where they are known to work; where they are listed as *(buggy — use `manage:all`)* the fine-grained scope is documented but empirically returns `insufficient_scope`.
+- **User permission** — a likely admin-UI permission requirement for a personal API token. Names generally follow labels in the Qualtrics admin UI; confirm them with your brand administrator.
+- **OAuth scope** — a scope string to check against the official API reference and OAuth client configuration. Notes marked with a tenant observation are not a guarantee for other brands.
 - **Typical failure symptom** — what you see when the permission/scope is missing, so you can recognize the shape from an error log.
 
-> The **Access API** user permission is a prerequisite for *every* endpoint when using a personal API token. It is the master switch. If it is off, every request returns 401 regardless of any other permission. It is listed as a prerequisite in the summary at the top of each section but omitted from per-row cells to keep the table legible.
+> Qualtrics' [user permissions documentation](https://www.qualtrics.com/support/survey-platform/sp-administration/managing-users/user-permissions/) describes Access API as the permission for v3 API access. Confirm effective permissions for your account with your brand administrator and a harmless `GET /API/v3/whoami` request.
 
 ## Admin-UI label → permission key
 
@@ -36,13 +36,13 @@ Qualtrics' admin UI uses friendly labels that do not always match the permission
 | Edit XM Directory | `editContactsDirectory` | Required for directory writes. |
 | Manage Directories | `manageDirectory` | Brand-admin-level directory permission. Implies the two above. |
 | Distribute Surveys | `distributeSurveys` | Gate for mailing-list distributions and reminders. |
-| Manage Workflows Across Projects | `manageWorkflows` | The one the author's token lacked. Required for every `/workflows/*` endpoint. |
+| Manage Workflows Across Projects | `manageWorkflows` | Reported by one account as necessary for workflow calls; verify for your brand. |
 | Manage Users | `manageUsers` | Brand-admin-level. Required for `/users` writes. |
 | View Users | `viewUsers` | Required for `GET /users`. |
 | Manage Groups | `manageGroups` | Brand-admin-level. Required for `/groups/*`. |
 | Manage Divisions | `manageDivisions` | Brand-admin-level. Required for `/divisions/*`. |
 
-> **Group and division permissions are additive.** If your user has a permission off but any group you belong to has it on, you have it. Same for division. When diagnosing a 403, check `GET /API/v3/whoami` — the returned `permissions` object is the effective union.
+> Group and division settings can affect effective access. Check `GET /API/v3/whoami` where available and ask your brand administrator to confirm effective permissions.
 
 ## Survey Platform — surveys, blocks, questions, flow
 
@@ -50,7 +50,7 @@ Qualtrics' admin UI uses friendly labels that do not always match the permission
 
 | Endpoint | Purpose | User permission | OAuth scope | Typical failure symptom |
 | --- | --- | --- | --- | --- |
-| `GET /surveys` | List surveys owned by or shared with the caller. | (none beyond Access API) | `read:surveys` *(buggy — use `manage:all`)* | 403 `insufficient_scope` on OAuth clients with only `read:surveys`. |
+| `GET /surveys` | List surveys owned by or shared with the caller. | (none beyond Access API) | `read:surveys` *(one-tenant test returned insufficient_scope)* | One tested OAuth client returned 403 with only `read:surveys`; verify on your brand. |
 | `POST /surveys` | Create a new empty survey. | Create Surveys | `manage:surveys` | 403 with `permissionDenied` and key `createSurveys`. |
 | `GET /surveys/{id}` | Get survey metadata. | (owner or shared) | `read:surveys` | 404 if not shared with the caller (sometimes, confusingly, instead of 403). |
 | `PUT /surveys/{id}` | Update survey metadata (name, expiration, isActive). | Edit Survey | `manage:surveys` | 403 `editSurveys`. |
@@ -76,7 +76,7 @@ See [`survey-platform.md`](./survey-platform.md) for request/response shapes and
 
 | Endpoint | Purpose | User permission | OAuth scope | Typical failure symptom |
 | --- | --- | --- | --- | --- |
-| `POST /surveys/{id}/export-responses` | Start an async export job. | View Response Data | `read:survey_responses` *(buggy — use `manage:all` for some formats)* | 403 `viewResponseData`, or 400 with `"Export format not allowed"` on SPSS without the right permission. |
+| `POST /surveys/{id}/export-responses` | Start an async export job. | View Response Data | `read:survey_responses` *(verify by format and tenant)* | Check the response body; format and permission errors may have different status codes. |
 | `GET /surveys/{id}/export-responses/{progressId}` | Poll job progress. | View Response Data | `read:survey_responses` | 403 `viewResponseData`. |
 | `GET /surveys/{id}/export-responses/{fileId}/file` | Download the finished file (zipped). | View Response Data **and** Download Response Data | `read:survey_responses` | 403 `downloadResponseData` even when you can see progress. |
 | `POST /surveys/{id}/import-responses` | Bulk-import responses. | Edit Survey | `manage:survey_responses` | 403 `editSurveys`; format mismatch surfaces as 400. |
@@ -94,7 +94,7 @@ See [`responses-and-exports.md`](./responses-and-exports.md) for the async job p
 | --- | --- | --- | --- | --- |
 | `GET /surveys/{id}/anonymous-link` *(or `GET /distributions/anonymous-link`)* | Retrieve the anonymous distribution link. | (owner or shared) | `read:surveys` | Endpoint path has shifted over time; fall back to reading the `distributionLinks` field on the survey object. |
 | `POST /distributions` | Create a mailing-list distribution. | Distribute Surveys + Access XM Directory | `manage:distributions` | 403 `distributeSurveys` or `accessContactsDirectory`. |
-| `GET /distributions` | List distributions on a survey. | Distribute Surveys | `read:distributions` *(buggy — use `manage:all`)* | 403 `distributeSurveys`. |
+| `GET /distributions` | List distributions on a survey. | Distribute Surveys | `read:distributions` *(one-tenant test returned insufficient_scope)* | Verify the required scope and user permission on your brand. |
 | `GET /distributions/{id}` | Get distribution details. | Distribute Surveys | `read:distributions` | 403. |
 | `POST /distributions/{id}/reminders` | Send a reminder to non-respondents. | Distribute Surveys | `manage:distributions` | 403. |
 | `POST /distributions/{id}/thankyous` | Send a thank-you to respondents. | Distribute Surveys | `manage:distributions` | 403. |
@@ -103,13 +103,13 @@ See [`distributions.md`](./distributions.md) for examples.
 
 ## Workflows
 
-**Prerequisites:** `Access API`, `Manage Workflows Across Projects`.
+**Prerequisites:** `Access API`. One tenant also required `Manage Workflows Across Projects`; confirm workflow access for your account.
 
-> This is the gap the author's token hit. If every other API call works and `/workflows/*` calls return 403, this is almost certainly why. Send [`request-for-permissions.md`](./request-for-permissions.md) to your brand admin.
+> One account received 403 responses on workflow endpoints until its workflow permission was enabled. Treat this as a troubleshooting clue; check the current permission labels and requirements for your brand. See [`request-for-permissions.md`](./request-for-permissions.md).
 
 | Endpoint | Purpose | User permission | OAuth scope | Typical failure symptom |
 | --- | --- | --- | --- | --- |
-| `GET /workflows` | List workflows. | Manage Workflows Across Projects | `read:workflows` *(buggy — use `manage:all`)* | 403 `manageWorkflows`. |
+| `GET /workflows` | List workflows. | Manage Workflows Across Projects | `read:workflows` *(one-tenant test returned insufficient_scope)* | Verify the required scope and user permission on your brand. |
 | `POST /workflows` | Create a workflow. | Manage Workflows Across Projects | `manage:workflows` | 403 `manageWorkflows`. |
 | `GET /workflows/{id}` | Get a workflow definition. | Manage Workflows Across Projects | `read:workflows` | 403 `manageWorkflows`. |
 | `PUT /workflows/{id}` | Update a workflow. | Manage Workflows Across Projects | `manage:workflows` | 403 `manageWorkflows`. |
@@ -148,13 +148,13 @@ Directory endpoints are scoped to a specific directory ID (often called "pool ID
 | `PUT /users/{uid}` | Update a user (including their permissions). | Manage Users | `manage:users` | 403. |
 | `GET /groups` | List groups. | Manage Groups | `read:groups` | 403 `manageGroups`. |
 | `POST /groups` | Create a group. | Manage Groups | `manage:groups` | 403. |
-| `GET /whoami` | Introspect the caller's user + permissions. | (none — every token can call this) | (none — always works) | Rare. Use this as a preflight. |
+| `GET /whoami` | Introspect the caller's user + permissions. | Access API for personal tokens | No scope listed here; confirm for OAuth | Use as a preflight where available. |
 
 See [`directory.md`](./directory.md) for examples.
 
-## Summary: the minimum token for `qsurvey from-pdf`
+## Starting permissions for a survey-creation script
 
-To ship the v0 CLI happy path end-to-end, a personal API token needs these user permissions:
+For the planned PDF-to-survey CLI, these permissions are a starting point based on the operations it is designed to perform. Confirm the specific requirements for your brand:
 
 - ✅ **Access API** — prerequisite.
 - ✅ **Create Surveys** — to create the survey from the parsed PDF.

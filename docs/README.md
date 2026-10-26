@@ -1,6 +1,8 @@
 # qsurvey docs
 
-Reference documentation for the Qualtrics API surface that the `qsurvey` SDK and CLI will cover.
+Reference notes and examples for a subset of the Qualtrics v3 API. Planned SDK and CLI interfaces described elsewhere are not shipped.
+
+Before using an AI agent to act on these examples, read [coverage and limitations](./coverage-and-limitations.md). These notes do not cover every Qualtrics product or permission configuration, and planned SDK behavior is not implemented code.
 
 This docs set is written before the code. It is the contract the code will implement against, and it is the reference material a human or an AI coding agent should reach for when writing anything that talks to Qualtrics.
 

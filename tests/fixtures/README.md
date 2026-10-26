@@ -84,7 +84,7 @@ When a fixture is added, flip its row to "✅ 2026-04" with the snapshot date.
 }
 ```
 
-The "-probably" suffix on `NextChoiceId` and `NextAnswerId` is deliberate: there's an open investigation from the origin project a production cohort debugging (see the internal post-mortem) about whether these fields contribute to the display-logic no-render bug. The classification is hedged pending a test survey that can isolate the variable.
+The "-probably" suffix on `NextChoiceId` and `NextAnswerId` is deliberate: it is not yet known whether these fields contribute to display-logic rendering behavior. The classification is hedged pending a test survey that can isolate the variable.
 
 ## How the test consumes these
 
@@ -92,7 +92,7 @@ The "-probably" suffix on `NextChoiceId` and `NextAnswerId` is deliberate: there
 
 - **runtime-critical:** diff must match exactly; mismatch fails the test.
 - **cosmetic:** diff is reported but does not fail the test.
-- **cosmetic-probably:** diff is reported as a warning. Promote to runtime-critical if a new the origin project-style bug surfaces and the investigation confirms the field matters.
+- **cosmetic-probably:** diff is reported as a warning. Promote to runtime-critical if further testing confirms the field matters.
 
 ## Non-goals
 
@@ -106,4 +106,4 @@ The "-probably" suffix on `NextChoiceId` and `NextAnswerId` is deliberate: there
 - [`docs/display-logic.md`](../../docs/display-logic.md) — the field-name bug that motivated this harness
 - [`docs/choice-fields.md`](../../docs/choice-fields.md) — field-by-field breakdown of question payloads
 - [`docs/gotchas.md`](../../docs/gotchas.md) — the broader footgun catalogue
-- the internal post-mortem — the post-mortems
+- this guide — the current fixture and behavior notes

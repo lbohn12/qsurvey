@@ -1,4 +1,4 @@
-# Runtime scope checks (design note for SDK v0.2)
+# Runtime scope checks (unimplemented design note)
 
 This doc specifies how the `qsurvey` SDK and CLI will surface permission and scope gaps at runtime. It is a **design note, not a description of shipping behavior** — the SDK code that implements this arrives in the next iteration. This doc is the contract that code will be written against.
 
@@ -45,7 +45,7 @@ class InsufficientPermissionError extends AuthorizationError {
 
 ### 3. `qsurvey doctor` (the CLI)
 
-A diagnostic subcommand that any researcher can run when "things broke". It:
+A diagnostic command that any Qualtrics user can run when an API call fails. It:
 
 1. Reads `QUALTRICS_API_TOKEN` and `QUALTRICS_DATA_CENTER` (with `.qsurveyrc` fallback per REQ-1.10).
 2. Calls `whoami`.
@@ -93,15 +93,15 @@ When this code ships, its tests must include:
 4. `qsurvey doctor` against a token missing three permissions lists exactly those three, not more.
 5. `qsurvey doctor --json` output is valid NDJSON with one object per area.
 
-The author's own survey-design-only token is the canonical manual-test fixture. Run `qsurvey doctor` with it; confirm Workflows and Directory show ❌ and everything else shows ✅.
+Use a test token with limited permissions as a manual-test fixture. Confirm that `qsurvey doctor` reports denied access for the areas the token cannot use.
 
-## Additional checks (added April 2026 after the origin project debugging)
+## Additional checks to consider
 
 In addition to permission/scope probes, `qsurvey doctor` shall check a small set of survey-options and workflow-state invariants and warn on deviations from safe defaults:
 
-1. **`BallotBoxStuffingPrevention` state.** If a survey has `SaveAndContinue: "true"` but `BallotBoxStuffingPrevention: "false"`, warn: "Applicants can silently re-submit by clicking a resume link after submitting. Enable Prevent Multiple Submissions in Survey Options → Security. See docs/survey-protection.md." Per `spec.md` REQ-2.36.
+1. **`BallotBoxStuffingPrevention` state.** If a survey has `SaveAndContinue: "true"` but `BallotBoxStuffingPrevention: "false"`, warn: "Respondents can silently re-submit by clicking a resume link after submitting. Enable Prevent Multiple Submissions in Survey Options → Security. See docs/survey-protection.md." Per `spec.md` REQ-2.36.
 
-2. **Destructive `--clean` guard.** When the CLI is invoked with `--clean` against a survey ID, `qsurvey doctor` shall check whether the survey has any active Modern Workflows (`GET /workflows?surveyId=…`). If any are present, refuse `--clean` unless `--force` is also supplied. Re-seeds destroy QIDs and every workflow that references them breaks silently. See [`idempotent-sync.md`](./idempotent-sync.md) and the internal post-mortem.
+2. **Destructive `--clean` guard.** When the CLI is invoked with `--clean` against a survey ID, `qsurvey doctor` shall check whether the survey has any active Modern Workflows (`GET /workflows?surveyId=…`). If any are present, refuse `--clean` unless `--force` is also supplied. Re-seeds destroy QIDs and every workflow that references them breaks silently. See [`idempotent-sync.md`](./idempotent-sync.md) and this guide.
 
 3. **In-page display-logic field-placement check.** For each question with display logic, confirm the rule is in `InPageDisplayLogic` (per [`display-logic.md`](./display-logic.md)) and not `DisplayLogic`. Warn if a rule is placed in the wrong field for its intended mode. Per `spec.md` REQ-2.28.
 

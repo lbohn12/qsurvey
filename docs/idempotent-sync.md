@@ -6,9 +6,9 @@ The `qsurvey` SDK's `sync` operation takes a declarative schema and reconciles i
 
 ## The principle
 
-**Never run a full re-seed on a live survey with workflows.** Workflows reference questions by `QID` (`QID5`, `QID386`, etc.), not by `DataExportTag`. A re-seed deletes all questions and creates new ones with fresh QIDs. Every workflow that references the old QIDs silently breaks.
+**Never run a full re-seed on a live survey with workflows.** Workflows reference questions by `QID` (`QID5`, `QID102`, etc.), not by `DataExportTag`. A re-seed deletes all questions and creates new ones with fresh QIDs. Every workflow that references the old QIDs silently breaks.
 
-Symptom seen on the origin project: after a `--clean` re-seed, workflows showed "Condition: Evaluated False" with `B0_EMAIL → undefined`, actual value `""`. The question existed, but under a new QID the workflow didn't know about.
+After a full re-seed, workflows that reference question IDs can stop matching those questions because the new survey definition has different QIDs. Prefer syncing existing questions and verify workflow behavior after changes.
 
 `qsurvey sync` matches existing questions by `DataExportTag` and updates them in place, preserving QIDs. This is REQ-2.11 in `spec.md`.
 
@@ -23,7 +23,7 @@ Given a schema and a target survey ID:
 5. **Reconcile flow:** fetch the current flow, compute a minimal diff, `PUT` the merged flow. Critically: preserve flow nodes the schema doesn't mention (EmbeddedData nodes, Branch elements, etc.) — see next section.
 6. **Reconcile survey options:** fetch current options, patch in the schema's overrides, `PUT`. Never send `null` for fields the schema doesn't touch.
 7. **Publish** (REQ from `spec.md` — make the draft visible to respondents).
-8. **Verify** — fetch the now-live definition and diff against the schema. Report any drift. This catches the intermittent "PUT returned 200 but Qualtrics dropped a field" failure mode (the internal post-mortem).
+8. **Verify** — fetch the now-live definition and diff against the schema. Report any drift. This catches the intermittent "PUT returned 200 but Qualtrics dropped a field" failure mode (this guide).
 
 ## Preserving manually-added flow nodes
 
@@ -46,7 +46,7 @@ Not all Qualtrics PUT endpoints have the same semantics. Some are merge, some ar
 
 | Endpoint | Behavior |
 | --- | --- |
-| `PUT /survey-definitions/{id}/questions/{qid}` | **Replace** on most fields, but sometimes drops fields like `ForceResponse` even when supplied (the internal post-mortem). Always verify after. |
+| `PUT /survey-definitions/{id}/questions/{qid}` | **Replace** on most fields, but sometimes drops fields like `ForceResponse` even when supplied (this guide). Always verify after. |
 | `PUT /survey-definitions/{id}/blocks/{bid}` | Replace. Must supply all `BlockElements` in order. |
 | `PUT /survey-definitions/{id}/flow` | Replace the entire flow tree. The caller is responsible for merging preserved elements in. |
 | `PUT /survey-definitions/{id}/options` | Merge-like: unprovided fields retain their previous values, but `null` triggers `oneOf` validation errors on some fields. |
@@ -70,7 +70,7 @@ if (diff.length > 0) {
 
 This is REQ-2.35. Common drift:
 
-- `ForceResponse` dropped by Qualtrics on some updates (the internal post-mortem) — re-push fixes it.
+- `ForceResponse` dropped by Qualtrics on some updates (this guide) — re-push fixes it.
 - Display logic in wrong field (see [`display-logic.md`](./display-logic.md)) — indicates the SDK's builder is drifting from UI parity; the fixture harness should have caught this first.
 - Survey options reverted (e.g., `BallotBoxStuffingPrevention` flipped off) — indicates someone edited in the UI; investigate.
 
@@ -112,4 +112,4 @@ Downstream tools (CI, the CLI's `--verify` flag, the branded portal's re-fetch l
 - [`choice-fields.md`](./choice-fields.md) — what sync preserves vs overwrites on question updates
 - [`display-logic.md`](./display-logic.md) — why `InPageDisplayLogic` must be preserved even when the schema doesn't mention the rule
 - [`gotchas.md`](./gotchas.md) — common drift causes
-- the internal post-mortem (never --clean a live survey) and #14 (ForceResponse drift)
+- this guide (never --clean a live survey) and #14 (ForceResponse drift)

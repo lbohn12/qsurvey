@@ -1,32 +1,32 @@
 # Gotchas — the Qualtrics footgun atlas
 
-A catalogue of silent-failure patterns the Qualtrics API rewards you for ignoring. Every entry has a symptom, a cause, a remediation, and references to the relevant `spec.md` REQ number and the internal post-mortem entry that originated it.
+A collection of Qualtrics API behaviors and troubleshooting notes. Entries describe a symptom, a likely cause, and a possible remediation; tenant-specific observations are labeled as such.
 
 If you hit a bug that isn't in this doc: open an issue. New gotchas get added here before they get fixed in code.
 
 ## Why this file exists
 
-Every other open-source Qualtrics package — `Jaseibert/QualtricsAPI`, `Baguage/pyqualtrics`, `matomatical/qualtrics`, `cwade/py_qualtrics_api`, `pytrics` — optimizes for reading response data. None of them documents the failure modes below. The `qsurvey` moat is: we catalogue the footguns, the SDK enforces safe defaults against them, and the [UI-parity fixture harness](../spec.md#spec-4--ui-parity-fixture-harness-cross-cutting-applies-to-sdk) fails CI when the SDK's output drifts from Qualtrics' own UI-saved structures.
+These notes combine behavior observed during testing with the public references linked throughout the guide. They are not an exhaustive list of Qualtrics edge cases; verify behaviors that matter to your workflow in the official reference and your own account. The planned [UI-parity fixture harness](../spec.md#spec-4--ui-parity-fixture-harness-cross-cutting-applies-to-sdk) is not implemented yet.
 
-## Why qsurvey exists on top of MCP
+## Where this guide fits with MCP
 
-The SDK re-scoped in April 2026 (see `spec.md` Transport: MCP-first, HTTP-optional) after an honest audit of overlap with Qualtrics' MCP servers and the community `yrvelez/qualtrics-mcp-server`. About half the SDK's original surface (survey CRUD, question CRUD, block CRUD, response export) duplicates tools MCP already exposes. The half this document justifies — correctness traps that MCP tool-wrappers can't catch because they're schema traps, not API traps — is what the SDK is for.
+The planned SDK focuses on schema correctness and verification in addition to the operations exposed through the Qualtrics API and MCP tools. The behavioral notes below describe cases that may not be caught by a basic API wrapper; check the official reference and your tenant before treating a note as universal.
 
-In short: use MCP for imperative "do a thing." Use `qsurvey` for "get the schema right and verify it later."
+MCP can call documented API operations. These notes add implementation examples and cautionary patterns for AI-assisted scripting.
 
 ---
 
-## `Q_R_DEL=1` wipes completed responses
+## `Q_R_DEL=1` replaces the original response when a retake is submitted
 
-**Symptom:** An applicant clicks a personalized resume link after submitting. Instead of landing on an "already submitted" page, they get a fresh 0% survey. Their submitted response disappears from the dataset entirely.
+**Symptom:** A respondent follows a retake link containing `Q_R_DEL=1` and submits the retake. The original response is replaced by the retake response.
 
-**Cause:** The resume URL contains `&Q_R_DEL=1`. Qualtrics interprets this as "if a response exists for this `Q_R` ID, delete it and start a new one." The semantic is unconditional — it applies to completed responses, not just abandoned-duplicate ones.
+**Behavior:** Qualtrics documents `Q_R_DEL=1` as an option for retake links that replace an original response. The original response is deleted after the respondent submits the last page of the retake. Merely opening the link does not delete it. If the respondent starts but does not finish and incomplete responses are recorded, the incomplete retake may be stored separately. See [Qualtrics' retake-link instructions](https://www.qualtrics.com/support/survey-platform/data-and-analysis-module/retake-survey-link/).
 
-**Remediation:** Never append `Q_R_DEL=1` to URLs that may reach a user after submission. Strip it from all reminder, confirmation, and batch-send templates. Replace with plain `?Q_R=<response_id>`. For cross-device duplicate prevention, use `BallotBoxStuffingPrevention` via survey options (see `docs/survey-protection.md`), not URL parameters.
+**Remediation:** Leave `Q_R_DEL=1` out of routine resume, reminder, and confirmation links. Include it only when intentionally offering a retake that should replace the prior response, and explain that behavior to the user. For duplicate-submission prevention, use survey settings and test the actual respondent flow; see `docs/survey-protection.md`.
 
-**SDK enforcement:** `spec.md` REQ-2.39 — the `Q_R` URL helper does not append `Q_R_DEL=1` unless the caller explicitly opts in via the pointedly-named `deleteExistingResponse` flag.
+**Planned SDK behavior:** `spec.md` REQ-2.39 — the `Q_R` URL helper does not append `Q_R_DEL=1` unless the caller explicitly opts in via the pointedly-named `deleteExistingResponse` flag.
 
-**References:** the internal post-mortem.
+**References:** [Qualtrics retake survey link](https://www.qualtrics.com/support/survey-platform/data-and-analysis-module/retake-survey-link/).
 
 ---
 
@@ -44,27 +44,27 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **Remediation:** Always write in-page display logic to `InPageDisplayLogic`, not `DisplayLogic`. Match the UI-saved JSON structure byte-for-byte including the placeholder fields. When clearing a rule, omit the key entirely — do not send `{"DisplayLogic": null}` (Qualtrics 400s on it, see the null-rejection entry below).
 
-**SDK enforcement:** `spec.md` REQ-2.28 through REQ-2.31. Fixture harness (Spec 4) fails CI if the SDK's `buildInPageDisplayLogic` output diverges from the UI-saved snapshot.
+**Planned SDK behavior:** `spec.md` REQ-2.28 through REQ-2.31. Fixture harness (Spec 4) fails CI if the SDK's `buildInPageDisplayLogic` output diverges from the UI-saved snapshot.
 
 **See also:** `docs/display-logic.md` for the full story with worked JSON examples.
 
-**References:** the internal post-mortem — this is the post-mortem bug that motivates `qsurvey`'s fixture harness.
+**Evidence:** Observed during testing. The proposed fixture harness is not implemented yet.
 
 ---
 
 ## Piped `${q://QID.../QuestionTextEntry}` renders empty in Modern Workflow emails
 
-**Symptom:** A Modern Workflow email is configured with a resume URL like `?Q_R=${q://QID356/QuestionTextEntry}` or a To address of `${q://QID356/QuestionTextEntry}`. The rendered URL is `?Q_R=` (empty). The To address is `""`. The email silently drops or 404s — no bounce, no error in Run History.
+**Symptom:** A Modern Workflow email is configured with a resume URL like `?Q_R=${q://QID103/QuestionTextEntry}` or a To address of `${q://QID103/QuestionTextEntry}`. The rendered URL is `?Q_R=` (empty). The To address is `""`. The email silently drops or 404s — no bounce, no error in Run History.
 
 **Cause:** Piped question references don't resolve reliably in workflow email task contexts. The workflow runs "outside" the response the question belongs to.
 
-**Remediation:** Never use `${q://…}` piped values in Modern Workflow emails for either To addresses or URL parameters. Instead, set the values you need as explicit embedded-data fields in a flow-level `EmbeddedData` node placed immediately after the capture block, then reference them as `${e://Field/…}` in the workflow. Example: after the block that captures the applicant's name/email, set `respondent_name`, `respondent_email`, and `response_id` as embedded data. The workflow email references them by embedded-data name.
+**Remediation:** Never use `${q://…}` piped values in Modern Workflow emails for either To addresses or URL parameters. Instead, set the values you need as explicit embedded-data fields in a flow-level `EmbeddedData` node placed immediately after the capture block, then reference them as `${e://Field/…}` in the workflow. Example: after the block that captures the respondent's name/email, set `respondent_name`, `respondent_email`, and `response_id` as embedded data. The workflow email references them by embedded-data name.
 
-**SDK enforcement:** `spec.md` REQ-2.34 — idempotent sync preserves manually-added `EmbeddedData` flow nodes so they aren't wiped on update.
+**Planned SDK behavior:** `spec.md` REQ-2.34 — idempotent sync preserves manually-added `EmbeddedData` flow nodes so they aren't wiped on update.
 
-**See also:** `docs/workflow-emails.md`; the internal workflow-email notes.
+**See also:** `docs/workflow-emails.md`; the workflow-email notes in this guide.
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
@@ -76,7 +76,7 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **Remediation:** Explicitly set a `response_id` embedded-data field (lowercase, user-defined) in the flow's `EmbeddedData` node, sourced from `${e://Field/ResponseID}` at that time. In workflow emails, reference the lowercase, explicitly-set version: `${e://Field/response_id}`.
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
@@ -88,13 +88,13 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **Remediation:** Migrate to a Modern Workflow triggered on Response → Completed Response. Use `${e://Field/respondent_email}` as the To address. Disable or delete the legacy trigger after migration so you don't double-send once the legacy trigger starts working again.
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
 ## Modern Workflow delay blocks cap at 7 days
 
-**Symptom:** You try to build a "fire on May 24" per-response reminder but Qualtrics' Delay block won't accept any value longer than 7 days.
+**Symptom:** You try to build a "fire on the target date" per-response reminder but Qualtrics' Delay block won't accept any value longer than 7 days.
 
 **Cause:** Qualtrics Modern Workflow Delay blocks have a hard 7-day maximum. This is not documented prominently.
 
@@ -102,9 +102,9 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 1. **Scheduled trigger workflow** — create a workflow with a Scheduled trigger (not Event-triggered). Lookup responses at the scheduled time, filter `Finished != True`, email each. Requires your Qualtrics tier to support Scheduled triggers; some licensing tiers don't.
 2. **Chained Delay blocks** — use multiple 7-day delays in sequence. Works for a fixed offset from start (e.g., fires at start + 35 days) but NOT for a fixed calendar date across responses that started on different days.
-3. **Manual batch send** — on the target date, export in-progress responses, mail-merge per-applicant resume links, send outside Qualtrics. the origin project used this for a production cohort.
+3. **Manual batch send** — on the target date, export in-progress responses, mail-merge per-respondent resume links, and send outside Qualtrics.
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
@@ -116,7 +116,7 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **Remediation:** Do not conclude from a test run that the workflow is broken. Validate by doing a real end-to-end submission — open the published link, advance past the capture block, wait for the email on real response data.
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
@@ -128,9 +128,9 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **Remediation:** Always run a verify pass after any update. If a required field is missing on any question, re-push. Do not assume a single successful PUT means the whole survey is correct.
 
-**SDK enforcement:** `spec.md` REQ-2.35 — the `verify` method catches this and reports it as drift.
+**Planned SDK behavior:** `spec.md` REQ-2.35 — the `verify` method catches this and reports it as drift.
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
@@ -142,11 +142,11 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **Remediation:** Populate these fields on every question the SDK creates, matching what the UI writes by default. The fixture harness (Spec 4) encodes the correct defaults.
 
-**SDK enforcement:** `spec.md` REQ-2.32 and REQ-2.33. Fixture harness per REQ-4.2.
+**Planned SDK behavior:** `spec.md` REQ-2.32 and REQ-2.33. Fixture harness per REQ-4.2.
 
 **See also:** `docs/choice-fields.md` for the full field-by-field breakdown.
 
-**References:** the internal post-mortem (open question under "still didn't render even after field-name fix").
+**Evidence:** Open question; requires further testing.
 
 ---
 
@@ -158,25 +158,25 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **Remediation:** Set the message manually in the UI for now. SDK support for "create a message library entry and reference it" is REQ for a future iteration — see `docs/survey-protection.md` for the workaround.
 
-**SDK enforcement:** `spec.md` REQ-2.37 — the SDK fails fast with a typed `ConfigurationError` when a schema tries to set inline HTML for this field.
+**Planned SDK behavior:** `spec.md` REQ-2.37 — the SDK fails fast with a typed `ConfigurationError` when a schema tries to set inline HTML for this field.
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
-## `BallotBoxStuffingPrevention` is the actual "prevent resubmission" lever
+## `BallotBoxStuffingPrevention` can help prevent same-browser resubmissions
 
-**Symptom:** You enable a flow-level branch guard (`submission_status == "submitted"` → terminal block) to block post-submit re-entry. It doesn't fire. Submitted applicants click their resume link and land on a fresh 0% survey.
+**Symptom:** You enable a flow-level branch guard (`submission_status == "submitted"` → terminal block) to block post-submit re-entry. It doesn't fire. Submitted respondents click their resume link and land on a fresh 0% survey.
 
-**Cause:** When Save-and-Continue is enabled and an applicant clicks `?Q_R=<completed_id>` without `Q_R_DEL=1`, Qualtrics does NOT load the completed response into the flow. It starts a brand-new response. The fresh response has no `submission_status` embedded data, so the branch guard evaluates false and the applicant proceeds through the survey.
+**Cause:** In some configurations, Save-and-Continue does not load a completed response into the flow when its `Q_R` link is opened. Qualtrics may start a new response instead. That response has no `submission_status` embedded data, so a branch guard may not fire. Test with the target survey's settings.
 
-**Remediation:** Enable `BallotBoxStuffingPrevention: "true"` in `SurveyOptions` (Survey Options → Security → Prevent Multiple Submissions). This is cookie-based — same-browser detection. Covers the primary case (applicant re-opens the email in the same browser). Does not cover cross-device or incognito, which are much narrower threat surfaces. The flow-level branch guard remains as a secondary defense for any other path that does load the completed response.
+**Remediation:** Enable `BallotBoxStuffingPrevention: "true"` in `SurveyOptions` (Survey Options → Security → Prevent Multiple Submissions). This is cookie-based — same-browser detection. Covers the primary case (respondent re-opens the email in the same browser). Does not cover cross-device or incognito, which are much narrower threat surfaces. The flow-level branch guard remains as a secondary defense for any other path that does load the completed response.
 
-**SDK enforcement:** `spec.md` REQ-2.36 — the SDK sets both options by default when the schema's `preventResubmission` flag is true.
+**Planned SDK behavior:** `spec.md` REQ-2.36 — the SDK sets both options by default when the schema's `preventResubmission` flag is true.
 
 **See also:** `docs/survey-protection.md` for the lever-vs-threat-model matrix.
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
@@ -188,9 +188,9 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **Remediation:** Omit the `DisplayLogic` key from the PUT payload entirely. Qualtrics will preserve whatever was there; to actually clear, do it via the UI, or issue a targeted PUT with an empty object `{}` and test — behavior depends on endpoint.
 
-**SDK enforcement:** `spec.md` REQ-2.31.
+**Planned SDK behavior:** `spec.md` REQ-2.31.
 
-**References:** the internal post-mortem addendum.
+**Evidence:** Endpoint behavior should be tested before relying on this workaround.
 
 ---
 
@@ -204,7 +204,7 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **See also:** `docs/display-logic.md`; fixture harness in `tests/fixtures/ui-snapshots/`.
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
@@ -218,16 +218,16 @@ Additionally, the UI-produced `InPageDisplayLogic` schema requires extra fields 
 
 **See also:** `docs/survey-platform.md` (which flags this already).
 
-**References:** the internal post-mortem.
+**Evidence:** Observed during testing; verify in your tenant.
 
 ---
 
 ## See also
 
-- [`display-logic.md`](./display-logic.md) — full post-mortem on the DisplayLogic / InPageDisplayLogic bug
+- [`display-logic.md`](./display-logic.md) — details on the DisplayLogic / InPageDisplayLogic behavior
 - [`workflow-emails.md`](./workflow-emails.md) — workflow email patterns and traps
 - [`survey-protection.md`](./survey-protection.md) — resubmission-prevention matrix
 - [`idempotent-sync.md`](./idempotent-sync.md) — how `qsurvey sync` preserves UI-managed nodes
 - [`choice-fields.md`](./choice-fields.md) — the scaffolding fields the UI adds that the API must match
 - [`mcp-dev-setup.md`](./mcp-dev-setup.md) — MCP server install for hitting live APIs during dev
-- the internal post-mortem — the canonical record of every Qualtrics bug that shaped this SDK
+- this guide — an incomplete collection of observed Qualtrics behaviors

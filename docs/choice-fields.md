@@ -20,13 +20,13 @@ This doc enumerates the scaffolding fields, which the `qsurvey` SDK populates by
 | `Choices` | MC, Matrix | Question renders with no options. |
 | `Configuration.QuestionDescriptionOption` | Always, for predictable editor behavior | UI shows "missing question text" warnings. |
 | `Validation.Settings.Type` | Required-or-not questions | API rejects if absent. |
-| `Validation.Settings.ForceResponse` | Required questions | `"ON"` for required, `"OFF"` otherwise. Intermittently dropped by PUT updates — see the internal post-mortem. |
+| `Validation.Settings.ForceResponse` | Required questions | `"ON"` for required, `"OFF"` otherwise. Intermittently dropped by PUT updates — see this guide. |
 
 ### Scaffolding the UI adds that API clients omit (and probably shouldn't)
 
 | Field | Applies to | What it does | Runtime-critical? |
 | --- | --- | --- | --- |
-| `ChoiceOrder` | MC | Ordered array of choice keys (`["1", "2"]`) defining display order. Without it, order falls back to dict-insertion order, which may or may not match what the caller intended. | **Probably yes** — suspected contributor to display-logic choice-resolution bugs (the internal post-mortem open investigation). Always set. |
+| `ChoiceOrder` | MC | Ordered array of choice keys (`["1", "2"]`) defining display order. Without it, order falls back to dict-insertion order, which may or may not match what the caller intended. | **Probably yes** — suspected contributor to display-logic choice-resolution bugs (this guide open investigation). Always set. |
 | `NextChoiceId` | MC | Numeric field the UI uses to know what ID to assign the next-added choice. | Unclear — UI-only as far as we know, but the fixture harness includes it for parity. |
 | `NextAnswerId` | Matrix, MC with row labels | Same role as `NextChoiceId` but for answer rows. | Unclear; same disposition as above. |
 | `DataVisibility` | All | Object with `Private` and `Hidden` booleans. Controls whether the field is visible in data & analysis / exports. | Sometimes yes (hiding a field in data-protection scenarios). Default is `{ "Private": false, "Hidden": false }`. |
@@ -40,7 +40,7 @@ This doc enumerates the scaffolding fields, which the `qsurvey` SDK populates by
 | `InPageDisplayLogic` | **YES, for in-page logic.** Writing to `DisplayLogic` instead silently fails. |
 | `DisplayLogic` | Only for cross-page logic. Do not use for same-page show/hide behavior. |
 
-## SDK enforcement
+## Planned SDK behavior
 
 Per [`spec.md`](../spec.md):
 
@@ -51,13 +51,13 @@ The fixture harness (Spec 4) asserts byte-for-byte parity against UI-saved snaps
 
 ## Why we don't know everything
 
-There's an open question documented in the internal post-mortem: even after the `InPageDisplayLogic` field-name fix and explicit `ChoiceOrder` population, a test case on a production cohort still didn't render display-logic follow-ups. We shipped with "always display" as a workaround and tagged the issue for a later cohort investigation.
+An open question remains: even after the `InPageDisplayLogic` field-name fix and explicit `ChoiceOrder` population, a test case on a live survey did not render display-logic follow-ups. "Always display" was used as a workaround while the cause remained under investigation.
 
-The hypothesis in the origin project repo: one or more of `NextChoiceId`, `DataVisibility`, or `SearchSource` may be load-bearing for display-logic choice resolution in ways not yet characterized. The fixture harness is designed to test this theory incrementally — every time a new fixture reveals a runtime-critical field, it gets classified in `tests/fixtures/field-classification.json` and a new gotcha entry gets written.
+One or more of `NextChoiceId`, `DataVisibility`, or `SearchSource` may affect display-logic choice resolution in ways not yet characterized. The fixture harness is designed to test this incrementally — when a fixture reveals a runtime-critical field, classify it in `tests/fixtures/field-classification.json` and document the behavior in `gotchas.md`.
 
 The practical recommendation until the investigation completes: always populate every scaffolding field the SDK knows about. The cost is low (a few extra bytes on the wire); the benefit is removing one more variable when runtime bugs appear.
 
-## Default values the SDK uses
+## Default values proposed for the SDK
 
 ```jsonc
 {
@@ -80,4 +80,4 @@ The fixture harness at `tests/fixtures/ui-snapshots/*.json` encodes these across
 - [`display-logic.md`](./display-logic.md) — the display-logic fields and their parallel model
 - [`survey-platform.md`](./survey-platform.md) — the question-type matrix
 - `tests/fixtures/README.md` — how to add a new fixture when you discover a UI-written field the SDK isn't setting
-- the internal post-mortem — related investigations
+- this guide — related investigations

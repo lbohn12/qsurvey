@@ -60,7 +60,7 @@ Response when done:
 { "result": { "percentComplete": 100.0, "status": "complete", "fileId": "abc123" } }
 ```
 
-**Polling cadence.** Qualtrics does not publish a recommended interval. Empirically: start at 1s, back off to 5s for long exports. Respect `X-RateLimit-Remaining` — see [`authentication.md`](./authentication.md#rate-limits). A one-year export on a large RFA survey can take 30–90 seconds; do not time out your polling loop under 2 minutes.
+**Polling cadence.** Qualtrics does not publish a recommended interval. Empirically: start at 1s, back off to 5s for long exports. Respect `X-RateLimit-Remaining` — see [`authentication.md`](./authentication.md#rate-limits). A one-year export on a large survey can take 30–90 seconds; do not time out your polling loop under 2 minutes.
 
 ### Step 3: download
 
@@ -117,13 +117,13 @@ Bulk import via `POST /surveys/{id}/import-responses` with a CSV or JSON payload
 
 ## Completed-response re-entry and Save-and-Continue
 
-When a survey has Save-and-Continue enabled (the default via `SurveyOptions.SaveAndContinue: "true"`) and an applicant clicks `?Q_R=<completed_id>` — i.e., a resume link after submitting — Qualtrics does NOT load the completed response into the flow. It typically starts a brand-new response. Consequences:
+When a survey has Save-and-Continue enabled and a respondent opens `?Q_R=<completed_id>` after submitting, one observed configuration started a new response instead of loading the completed response into the flow. This behavior may depend on survey settings; test it with the target survey. Possible consequences include:
 
 - Response exports show the original submitted response (unchanged, good) AND a new in-progress or completed response from the re-entry attempt (noise, possibly problematic).
 - Flow-level branch guards keyed on submission-state embedded data never fire (because the new response has no such data). See [`survey-protection.md`](./survey-protection.md).
-- Email workflows triggered on the new response's embedded-data-set event will fire a duplicate welcome email to the same applicant.
+- Email workflows triggered on the new response's embedded-data-set event will fire a duplicate welcome email to the same respondent.
 
-**Remediation:** enable `BallotBoxStuffingPrevention` (see [`survey-protection.md`](./survey-protection.md)) so returning applicants from the same browser are intercepted before a new response is created. For cross-browser / cross-device cases, `SurveyLinkCompletedMessage` is the complementary lever.
+**Remediation:** enable `BallotBoxStuffingPrevention` (see [`survey-protection.md`](./survey-protection.md)) so returning respondents from the same browser are intercepted before a new response is created. For cross-browser / cross-device cases, `SurveyLinkCompletedMessage` is the complementary lever.
 
 For exports specifically: filter on `Finished == True` and inspect `StartDate` and `RecordedDate` to distinguish original submissions from resubmission-attempt artifacts.
 

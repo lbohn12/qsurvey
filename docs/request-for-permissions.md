@@ -8,7 +8,7 @@ Send this to your Qualtrics brand administrator. Fill in the `{…}` placeholder
 
 Hi {admin name},
 
-I am using the `qsurvey` toolkit to script against Qualtrics for {short description of project, e.g., "a grant-application portal"}. Our existing API token lets me design surveys but rejects some of the automation endpoints we need. Would you be able to enable the user permissions below on my account so we can keep moving?
+I am using the `qsurvey` documentation and examples to script against Qualtrics for {short description of use, e.g., "survey creation and response export"}. My API token can access some operations but rejects others. Would you confirm the minimum user permissions needed for the operations below and enable them on my account?
 
 **My Qualtrics account:** {your email / your userId like `UR_abc123`}
 
@@ -29,15 +29,15 @@ I am using the `qsurvey` toolkit to script against Qualtrics for {short descript
 
 **If our brand uses divisions:** please confirm that my user's division has the default XM Directory assigned to it under **Admin → Divisions → {division} → Directories**. A user permission on its own is not sufficient when the division does not have access.
 
-**If our brand uses OAuth clients rather than personal API tokens:** please ensure the client I am using has these scopes (space-separated in the client configuration):
+**If our brand uses OAuth clients rather than personal API tokens:** please confirm the minimum scopes for these operations with the current Qualtrics API documentation and configure the client accordingly. The scope below is only an observation from one tenant, not a universal requirement:
 
 ```
 manage:all
 ```
 
-(The fine-grained scopes like `read:surveys`, `manage:surveys`, `read:workflows`, `manage:workflows`, `read:directory_contacts`, `manage:directory_contacts` are the Qualtrics-recommended minimums, but several of them return `insufficient_scope` on endpoints the docs say they should cover. `manage:all` is the only scope that reliably unblocks the whole API surface. I am happy to switch to narrower scopes if/when Qualtrics fixes that gap.)
+(The scopes above are examples from the API documentation. In the author's tenant, some fine-grained scopes returned `insufficient_scope` on calls expected to allow them, while `manage:all` worked. Treat this as an observation from one configuration, not a universal Qualtrics rule; verify the minimum scope for your endpoint and brand.)
 
-**Why I am asking for these specifically:** the tool I am using (`qsurvey`, an open-source CLI/SDK layer over the Qualtrics API) documents per-endpoint requirements at {link to `docs/permissions-and-scopes.md` once this repo is public}. The checkboxes above are the exact set required for our project scope.
+**Why I am asking for these specifically:** the `qsurvey` guide has best-effort permission notes at {link to `docs/permissions-and-scopes.md`}. Please confirm the current minimum requirements for our brand; the guide may not cover every endpoint or account configuration.
 
 Thank you,
 
@@ -45,9 +45,9 @@ Thank you,
 
 ---
 
-## Notes for the researcher sending this
+## Notes for the Qualtrics user sending this
 
 - **Trim the list.** If you only need survey design (no workflows, no response export, no directory), delete those bullets. Shorter asks get turned around faster.
 - **Cite the doc link** in the body if the repo is public. Admins answering a flood of tickets respond better when the request links to authoritative reference material.
 - **Expect a delay.** At large enterprises, these requests sometimes route through a ticketing system and take days. If you are blocked, ask for the minimum unblocking permission (usually Access API + Create Surveys + Edit Survey + Activate Survey) first and request the rest in a second ticket.
-- **Ask how to verify.** After the admin says "done", run [`examples/ts/01-auth-and-whoami.ts`](./examples/ts/01-auth-and-whoami.ts) and confirm the permissions block in the output matches. If you have the `qsurvey` CLI installed once it ships, `qsurvey doctor` (specified in [`runtime-scope-checks.md`](./runtime-scope-checks.md)) runs the same check in one command.
+- **Ask how to verify.** After the admin says "done", use a read-only API call such as [`examples/ts/01-auth-and-whoami.ts`](./examples/ts/01-auth-and-whoami.ts), then check the endpoint documentation and the response from the specific operation you need.
